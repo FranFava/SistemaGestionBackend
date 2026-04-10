@@ -116,7 +116,6 @@ app.use((req, res) => {
 app.use(errorHandler);
 
 const connectDB = require('./config/database');
-connectDB();
 
 const startServer = () => {
   const PORT = process.env.PORT || 5000;
@@ -143,7 +142,37 @@ const startServer = () => {
   }
 };
 
-startServer();
+const crearUsuarioAdmin = async () => {
+  try {
+    const Usuario = require('./models/Usuario');
+    const adminExiste = await Usuario.findOne({ username: 'admin' });
+    
+    if (!adminExiste) {
+      const admin = new Usuario({
+        username: 'admin',
+        password: '123456',
+        nombre: 'Administrador',
+        rol: 'admin',
+        activo: true
+      });
+      await admin.save();
+      console.log('✅ Usuario admin creado: admin / 123456');
+    } else {
+      console.log('ℹ️ Usuario admin ya existe');
+    }
+  } catch (err) {
+    console.error('❌ Error al crear usuario admin:', err.message);
+  }
+};
+
+const iniciarBackend = async () => {
+  await connectDB();
+  await crearUsuarioAdmin();
+  
+  startServer();
+};
+
+iniciarBackend();
 
 process.on('SIGINT', () => {
   console.log('\nCerrando servidor...');
