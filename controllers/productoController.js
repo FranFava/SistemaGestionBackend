@@ -1,5 +1,13 @@
 const Producto = require('../models/Producto');
 
+/**
+ * Obtiene todos los productos activos.
+ * @async
+ * @function getProductos
+ * @param {Object} req - Request de Express
+ * @param {Object} res - Response de Express
+ * @returns {Promise<void>}
+ */
 const getProductos = async (req, res) => {
   try {
     const productos = await Producto.find({ activo: true });
@@ -9,6 +17,14 @@ const getProductos = async (req, res) => {
   }
 };
 
+/**
+ * Obtiene un producto por su ID.
+ * @async
+ * @function getProductoById
+ * @param {Object} req - Request de Express
+ * @param {Object} res - Response de Express
+ * @returns {Promise<void>}
+ */
 const getProductoById = async (req, res) => {
   try {
     const producto = await Producto.findById(req.params.id);
@@ -19,6 +35,14 @@ const getProductoById = async (req, res) => {
   }
 };
 
+/**
+ * Crea un nuevo producto.
+ * @async
+ * @function createProducto
+ * @param {Object} req - Request de Express
+ * @param {Object} res - Response de Express
+ * @returns {Promise<void>}
+ */
 const createProducto = async (req, res) => {
   try {
     const producto = new Producto(req.body);
@@ -29,6 +53,14 @@ const createProducto = async (req, res) => {
   }
 };
 
+/**
+ * Actualiza un producto existente.
+ * @async
+ * @function updateProducto
+ * @param {Object} req - Request de Express
+ * @param {Object} res - Response de Express
+ * @returns {Promise<void>}
+ */
 const updateProducto = async (req, res) => {
   try {
     const producto = await Producto.findByIdAndUpdate(
@@ -43,6 +75,14 @@ const updateProducto = async (req, res) => {
   }
 };
 
+/**
+ * Elimina un producto (soft delete).
+ * @async
+ * @function deleteProducto
+ * @param {Object} req - Request de Express
+ * @param {Object} res - Response de Express
+ * @returns {Promise<void>}
+ */
 const deleteProducto = async (req, res) => {
   try {
     const producto = await Producto.findByIdAndUpdate(
@@ -57,6 +97,14 @@ const deleteProducto = async (req, res) => {
   }
 };
 
+/**
+ * Verifica si un SKU existe.
+ * @async
+ * @function checkSku
+ * @param {Object} req - Request de Express
+ * @param {Object} res - Response de Express
+ * @returns {Promise<void>}
+ */
 const checkSku = async (req, res) => {
   try {
     const producto = await Producto.findOne({ sku: req.params.sku, activo: true });

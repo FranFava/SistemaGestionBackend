@@ -1,6 +1,13 @@
 const jwt = require('jsonwebtoken');
 const Usuario = require('../models/Usuario');
 
+/**
+ * Autentica un usuario y retorna token JWT.
+ * @async
+ * @function login
+ * @param {Object} req - Request de Express
+ * @param {Object} res - Response de Express
+ */
 const login = async (req, res) => {
   try {
     const { username, password } = req.body;
@@ -30,6 +37,14 @@ const login = async (req, res) => {
   }
 };
 
+/**
+ * Registra un nuevo usuario.
+ * @async
+ * @function register
+ * @param {Object} req - Request de Express
+ * @param {Object} res - Response de Express
+ * @param {Function} next - Next middleware
+ */
 const register = async (req, res, next) => {
   try {
     const { username, password, nombre, rol } = req.body;
@@ -41,6 +56,13 @@ const register = async (req, res, next) => {
   }
 };
 
+/**
+ * Valida un token JWT y retorna el usuario.
+ * @async
+ * @function validateToken
+ * @param {Object} req - Request de Express
+ * @param {Object} res - Response de Express
+ */
 const validateToken = async (req, res) => {
   try {
     let token = req.headers.authorization?.split(' ')[1];

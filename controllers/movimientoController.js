@@ -4,6 +4,17 @@ const Caja = require('../models/Caja');
 const Config = require('../models/Config');
 const { verificarStockYActualizarAlertas } = require('./alertaController');
 
+/**
+ * Actualiza el stock de un producto.
+ * @async
+ * @function actualizarStockProducto
+ * @param {string} producto - ID del producto
+ * @param {Object} variante - Variante del producto
+ * @param {number} cantidad - Cantidad a sumar/restar
+ * @param {string} tipo - Tipo de movimiento
+ * @param {string} [operacion='sumar'] - Operación: 'sumar' o 'restar'
+ * @returns {Promise<Object>}
+ */
 const actualizarStockProducto = async (producto, variante, cantidad, tipo, operacion = 'sumar') => {
   const productoDoc = await Producto.findById(producto);
   if (!productoDoc) return { success: false, message: 'Producto no encontrado' };
@@ -31,6 +42,13 @@ const actualizarStockProducto = async (producto, variante, cantidad, tipo, opera
   return { success: true };
 };
 
+/**
+ * Obtiene movimientos con filtros opcionales.
+ * @async
+ * @function getMovimientos
+ * @param {Object} req - Request de Express
+ * @param {Object} res - Response de Express
+ */
 const getMovimientos = async (req, res) => {
   try {
     const { fechaInicio, fechaFin, tipo, producto } = req.query;
@@ -55,6 +73,13 @@ const getMovimientos = async (req, res) => {
   }
 };
 
+/**
+ * Obtiene movimientos de un producto específico.
+ * @async
+ * @function getMovimientosByProducto
+ * @param {Object} req - Request de Express
+ * @param {Object} res - Response de Express
+ */
 const getMovimientosByProducto = async (req, res) => {
   try {
     const movimientos = await Movimiento.find({ producto: req.params.id })
@@ -66,6 +91,13 @@ const getMovimientosByProducto = async (req, res) => {
   }
 };
 
+/**
+ * Crea un nuevo movimiento.
+ * @async
+ * @function createMovimiento
+ * @param {Object} req - Request de Express
+ * @param {Object} res - Response de Express
+ */
 const createMovimiento = async (req, res) => {
   try {
     if (!req.user || !req.user.id) {

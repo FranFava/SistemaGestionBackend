@@ -1,5 +1,12 @@
 const Usuario = require('../models/Usuario');
 
+/**
+ * Obtiene todos los usuarios activos.
+ * @async
+ * @function getUsuarios
+ * @param {Object} req - Request de Express
+ * @param {Object} res - Response de Express
+ */
 const getUsuarios = async (req, res) => {
   try {
     const usuarios = await Usuario.find({ activo: true }).select('-password');
@@ -9,6 +16,13 @@ const getUsuarios = async (req, res) => {
   }
 };
 
+/**
+ * Crea un nuevo usuario.
+ * @async
+ * @function createUsuario
+ * @param {Object} req - Request de Express
+ * @param {Object} res - Response de Express
+ */
 const createUsuario = async (req, res) => {
   try {
     const { username, password, nombre, rol } = req.body;
@@ -26,6 +40,13 @@ const createUsuario = async (req, res) => {
   }
 };
 
+/**
+ * Actualiza un usuario.
+ * @async
+ * @function updateUsuario
+ * @param {Object} req - Request de Express
+ * @param {Object} res - Response de Express
+ */
 const updateUsuario = async (req, res) => {
   try {
     const { username, password, nombre, rol } = req.body;
@@ -47,6 +68,13 @@ const updateUsuario = async (req, res) => {
   }
 };
 
+/**
+ * Elimina un usuario (soft delete).
+ * @async
+ * @function deleteUsuario
+ * @param {Object} req - Request de Express
+ * @param {Object} res - Response de Express
+ */
 const deleteUsuario = async (req, res) => {
   try {
     const usuario = await Usuario.findByIdAndUpdate(

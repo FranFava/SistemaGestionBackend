@@ -1,5 +1,12 @@
 const Cliente = require('../models/Cliente');
 
+/**
+ * Obtiene todos los clientes activos.
+ * @async
+ * @function getClientes
+ * @param {Object} req - Request de Express
+ * @param {Object} res - Response de Express
+ */
 const getClientes = async (req, res) => {
   try {
     const clientes = await Cliente.find({ activo: true });
@@ -9,6 +16,13 @@ const getClientes = async (req, res) => {
   }
 };
 
+/**
+ * Crea un nuevo cliente.
+ * @async
+ * @function createCliente
+ * @param {Object} req - Request de Express
+ * @param {Object} res - Response de Express
+ */
 const createCliente = async (req, res) => {
   try {
     const cliente = new Cliente(req.body);
@@ -19,6 +33,13 @@ const createCliente = async (req, res) => {
   }
 };
 
+/**
+ * Actualiza un cliente.
+ * @async
+ * @function updateCliente
+ * @param {Object} req - Request de Express
+ * @param {Object} res - Response de Express
+ */
 const updateCliente = async (req, res) => {
   try {
     const cliente = await Cliente.findByIdAndUpdate(
@@ -33,6 +54,13 @@ const updateCliente = async (req, res) => {
   }
 };
 
+/**
+ * Elimina un cliente (soft delete).
+ * @async
+ * @function deleteCliente
+ * @param {Object} req - Request de Express
+ * @param {Object} res - Response de Express
+ */
 const deleteCliente = async (req, res) => {
   try {
     const cliente = await Cliente.findByIdAndUpdate(

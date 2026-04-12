@@ -1,5 +1,12 @@
 const Proveedor = require('../models/Proveedor');
 
+/**
+ * Obtiene todos los proveedores activos.
+ * @async
+ * @function getProveedores
+ * @param {Object} req - Request de Express
+ * @param {Object} res - Response de Express
+ */
 const getProveedores = async (req, res) => {
   try {
     const proveedores = await Proveedor.find({ activo: true });
@@ -9,6 +16,13 @@ const getProveedores = async (req, res) => {
   }
 };
 
+/**
+ * Crea un nuevo proveedor.
+ * @async
+ * @function createProveedor
+ * @param {Object} req - Request de Express
+ * @param {Object} res - Response de Express
+ */
 const createProveedor = async (req, res) => {
   try {
     const proveedor = new Proveedor(req.body);
@@ -19,6 +33,13 @@ const createProveedor = async (req, res) => {
   }
 };
 
+/**
+ * Actualiza un proveedor.
+ * @async
+ * @function updateProveedor
+ * @param {Object} req - Request de Express
+ * @param {Object} res - Response de Express
+ */
 const updateProveedor = async (req, res) => {
   try {
     const proveedor = await Proveedor.findByIdAndUpdate(
@@ -33,6 +54,13 @@ const updateProveedor = async (req, res) => {
   }
 };
 
+/**
+ * Elimina un proveedor (soft delete).
+ * @async
+ * @function deleteProveedor
+ * @param {Object} req - Request de Express
+ * @param {Object} res - Response de Express
+ */
 const deleteProveedor = async (req, res) => {
   try {
     const proveedor = await Proveedor.findByIdAndUpdate(

@@ -1,6 +1,13 @@
 const Alerta = require('../models/Alerta');
 const Producto = require('../models/Producto');
 
+/**
+ * Genera alertas de stock para un producto.
+ * @async
+ * @function generarAlertasParaProducto
+ * @param {string} productoId - ID del producto
+ * @param {Object} [variante=null] - Variante específica
+ */
 const generarAlertasParaProducto = async (productoId, variante = null) => {
   try {
     const producto = await Producto.findById(productoId);
@@ -45,6 +52,11 @@ const generarAlertasParaProducto = async (productoId, variante = null) => {
   }
 };
 
+/**
+ * Genera todas las alertas de stock.
+ * @async
+ * @function generarTodasLasAlertas
+ */
 const generarTodasLasAlertas = async () => {
   try {
     const productos = await Producto.find({ activo: true });
@@ -76,6 +88,13 @@ const generarTodasLasAlertas = async () => {
   }
 };
 
+/**
+ * Obtiene alertas activas de stock bajo.
+ * @async
+ * @function getAlertasActivas
+ * @param {Object} req - Request de Express
+ * @param {Object} res - Response de Express
+ */
 const getAlertasActivas = async (req, res) => {
   try {
     const alertas = await Alerta.find({ estado: 'activa' })
@@ -99,6 +118,13 @@ const getAlertasActivas = async (req, res) => {
   }
 };
 
+/**
+ * Obtiene alertas descartadas.
+ * @async
+ * @function getAlertasDescartadas
+ * @param {Object} req - Request de Express
+ * @param {Object} res - Response de Express
+ */
 const getAlertasDescartadas = async (req, res) => {
   try {
     const alertas = await Alerta.find({ estado: 'descartada' })

@@ -1,6 +1,14 @@
 const Caja = require('../models/Caja');
 const Config = require('../models/Config');
 
+/**
+ * Obtiene movimientos de caja con filtros.
+ * @async
+ * @function getMovimientosCaja
+ * @param {Object} req - Request de Express
+ * @param {Object} res - Response de Express
+ * @param {Function} next - Next middleware
+ */
 const getMovimientosCaja = async (req, res, next) => {
   try {
     const { fechaInicio, fechaFin, tipo, metodoPago, moneda } = req.query || {};
@@ -27,6 +35,14 @@ const getMovimientosCaja = async (req, res, next) => {
   }
 };
 
+/**
+ * Obtiene los saldos de caja.
+ * @async
+ * @function getSaldos
+ * @param {Object} req - Request de Express
+ * @param {Object} res - Response de Express
+ * @param {Function} next - Next middleware
+ */
 const getSaldos = async (req, res, next) => {
   try {
     const config = await Config.findOne() || { cotizacionDolar: 1000 };

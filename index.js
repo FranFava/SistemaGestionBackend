@@ -49,6 +49,167 @@ app.use((req, res, next) => {
 
 const auth = require('./middleware/auth');
 
+const swaggerJsdoc = require('swagger-jsdoc');
+const swaggerUi = require('swagger-ui-express');
+
+const swaggerOptions = {
+  definition: {
+    openapi: '3.0.0',
+    info: {
+      title: 'Sistema de Gestión de Stock API',
+      version: '1.0.0',
+      description: 'API REST para el sistema de gestión de inventario y stock',
+      contact: {
+        name: 'API Support',
+        email: 'support@sistema.com'
+      }
+    },
+    servers: [
+      {
+        url: 'http://localhost:5000',
+        description: 'Development server'
+      }
+    ],
+    components: {
+      securitySchemes: {
+        bearerAuth: {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
+          description: 'JWT token in x-auth-token header'
+        }
+      },
+      schemas: {
+        Producto: {
+          type: 'object',
+          properties: {
+            _id: { type: 'string' },
+            nombre: { type: 'string' },
+            sku: { type: 'string' },
+            marca: { type: 'string' },
+            categoria: { type: 'string' },
+            descripcion: { type: 'string' },
+            precioCosto: { type: 'number' },
+            precioVenta: { type: 'number' },
+            stockMinimo: { type: 'number' },
+            garantiaMeses: { type: 'number' },
+            variantes: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  color: { type: 'string' },
+                  capacidad: { type: 'string' },
+                  stock: { type: 'number' }
+                }
+              }
+            },
+            activo: { type: 'boolean' }
+          }
+        },
+        ProductoInput: {
+          type: 'object',
+          required: ['nombre', 'sku'],
+          properties: {
+            nombre: { type: 'string' },
+            sku: { type: 'string' },
+            marca: { type: 'string' },
+            categoria: { type: 'string' },
+            descripcion: { type: 'string' },
+            precioCosto: { type: 'number' },
+            precioVenta: { type: 'number' },
+            stockMinimo: { type: 'number' },
+            garantiaMeses: { type: 'number' },
+            variantes: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  color: { type: 'string' },
+                  capacidad: { type: 'string' },
+                  stock: { type: 'number' }
+                }
+              }
+            }
+          }
+        },
+        Movimiento: {
+          type: 'object',
+          properties: {
+            _id: { type: 'string' },
+            tipo: { type: 'string', enum: ['entrada', 'salida', 'ajuste'] },
+            producto: { type: 'string' },
+            cantidad: { type: 'number' },
+            precioUnitario: { type: 'number' },
+            total: { type: 'number' },
+            observaciones: { type: 'string' },
+            variante: { type: 'object' },
+            active: { type: 'boolean' }
+          }
+        },
+        Usuario: {
+          type: 'object',
+          properties: {
+            _id: { type: 'string' },
+            username: { type: 'string' },
+            nombre: { type: 'string' },
+            rol: { type: 'string', enum: ['admin', 'usuario'] },
+            activo: { type: 'boolean' }
+          }
+        },
+        LoginRequest: {
+          type: 'object',
+          required: ['username', 'password'],
+          properties: {
+            username: { type: 'string' },
+            password: { type: 'string' }
+          }
+        },
+        LoginResponse: {
+          type: 'object',
+          properties: {
+            token: { type: 'string' },
+            usuario: {
+              type: 'object',
+              properties: {
+                id: { type: 'string' },
+                username: { type: 'string' },
+                nombre: { type: 'string' },
+                rol: { type: 'string' }
+              }
+            }
+          }
+        }
+      }
+    },
+    security: [{
+      bearerAuth: []
+    }],
+    tags: [
+      { name: 'Autenticación', description: 'Endpoints de login y auth' },
+      { name: 'Productos', description: 'Gestión de productos' },
+      { name: 'Movimientos', description: 'Registro de movimientos' },
+      { name: 'Caja', description: 'Control de caja' },
+      { name: 'Proveedores', description: 'Gestión de proveedores' },
+      { name: 'Clientes', description: 'Gestión de clientes' },
+      { name: 'Usuarios', description: 'Gestión de usuarios' },
+      { name: 'Alertas', description: 'Alertas de stock bajo' }
+    ]
+  },
+  apis: ['./routes/*.js', './controllers/*.js']
+};
+
+const swaggerSpec = swaggerJsdoc(swaggerOptions);
+
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+  customCss: '.swagger-ui .topbar { display: none }',
+  customSiteTitle: 'Sistema Francisco API Docs'
+}));
+
+app.get('/api-docs.json', (req, res) => {
+  res.json(swaggerSpec);
+});
+
 app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'ok', 

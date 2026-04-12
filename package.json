@@ -4,9 +4,10 @@
   "description": "Sistema de Gestión de Stock - Backend",
   "main": "index.js",
   "scripts": {
-    "start": "NODE_ENV=production node index.js",
+    "start": "node index.js",
     "dev": "nodemon index.js",
     "seed": "node seed.js",
+    "build": "echo 'No build required for backend'",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -19,13 +20,18 @@
     "dotenv": "^16.4.5",
     "express": "^4.21.0",
     "jsonwebtoken": "^9.0.2",
-    "mongoose": "^8.7.0"
+    "mongoose": "^8.7.0",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {
     "nodemon": "^3.1.0"
   },
   "nodemonConfig": {
-    "ignore": ["node_modules", "dist"],
+    "ignore": [
+      "node_modules",
+      "dist"
+    ],
     "delay": 1000,
     "env": {
       "NODE_ENV": "development"
