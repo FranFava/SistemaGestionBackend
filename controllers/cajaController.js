@@ -22,10 +22,11 @@ const getMovimientosCaja = async (req, res, next) => {
     if (tipo) query.tipo = tipo;
     if (metodoPago) query.metodoPago = metodoPago;
     if (moneda) query.moneda = moneda;
+    query.activo = true;
 
     const movimientos = await Caja.find(query)
       .populate('usuario', 'nombre username')
-      .populate('referencia.id')
+      .populate('referencia')
       .sort({ fecha: -1 });
     
     return res.json({ success: true, data: movimientos });
@@ -48,7 +49,7 @@ const getSaldos = async (req, res, next) => {
     const config = await Config.findOne() || { cotizacionDolar: 1000 };
     let movimientos = [];
     try {
-      movimientos = await Caja.find();
+      movimientos = await Caja.find({ activo: true });
     } catch (cajaError) {
       console.error('Error al buscar movimientos de caja:', cajaError.message);
     }
@@ -107,6 +108,11 @@ const createMovimientoCaja = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Faltan campos requeridos' });
     }
 
+    const montoNum = Number(monto);
+    if (!montoNum || montoNum <= 0) {
+      return res.status(400).json({ success: false, message: 'El monto debe ser mayor a 0' });
+    }
+
     const movimiento = new Caja({
       tipo,
       metodoPago,
@@ -138,11 +144,20 @@ const deleteMovimientoCaja = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'ID requerido' });
     }
 
-    const movimiento = await Caja.findByIdAndDelete(id);
+    const movimiento = await Caja.findById(id);
     
     if (!movimiento) {
       return res.status(404).json({ success: false, message: 'Movimiento no encontrado' });
     }
+
+    if (!movimiento.activo) {
+      return res.status(400).json({ success: false, message: 'Movimiento ya eliminado' });
+    }
+
+    movimiento.activo = false;
+    movimiento.eliminadoPor = req.user.id;
+    movimiento.fechaEliminacion = new Date();
+    await movimiento.save();
     
     return res.json({ success: true, message: 'Movimiento eliminado' });
   } catch (error) {

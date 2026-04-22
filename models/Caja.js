@@ -45,6 +45,17 @@ const cajaSchema = new mongoose.Schema({
   fecha: {
     type: Date,
     default: Date.now
+  },
+  activo: {
+    type: Boolean,
+    default: true
+  },
+  eliminadoPor: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Usuario'
+  },
+  fechaEliminacion: {
+    type: Date
   }
 }, {
   timestamps: true
