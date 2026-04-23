@@ -302,9 +302,52 @@ const buscarCliente = async (req, res) => {
   }
 };
 
+const getVentas = async (req, res) => {
+  try {
+    const { estado, desde, hasta } = req.query;
+    const query = {};
+
+    if (estado) query.tipo = estado;
+    if (desde || hasta) {
+      query.fecha = {};
+      if (desde) query.fecha.$gte = new Date(desde);
+      if (hasta) query.fecha.$lte = new Date(hasta);
+    }
+
+    const movimientos = await Movimiento.find(query)
+      .populate('producto', 'nombre sku')
+      .populate('usuario', 'nombre')
+      .sort({ fecha: -1 })
+      .limit(100);
+
+    res.json(movimientos);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+const getVentaById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const movimiento = await Movimiento.findById(id)
+      .populate('producto', 'nombre sku')
+      .populate('usuario', 'nombre');
+
+    if (!movimiento) {
+      return res.status(404).json({ message: 'Venta no encontrada' });
+    }
+
+    res.json(movimiento);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
   crearVenta,
   confirmarReserva,
   cancelarReserva,
-  buscarCliente
+  buscarCliente,
+  getVentas,
+  getVentaById
 };
