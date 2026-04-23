@@ -161,18 +161,23 @@ const crearOBuscarCliente = async (clienteData, res) => {
     if (existente) return existente;
   }
 
-  if (clienteData.documento) {
-    const existente = await Cliente.findOne({ documento: clienteData.documento, activo: true });
+  const buscarPor = clienteData.instagram || clienteData.telefono;
+  if (buscarPor) {
+    const query = { activo: true };
+    if (clienteData.instagram) query.instagram = clienteData.instagram;
+    else if (clienteData.telefono) query.telefono = clienteData.telefono;
+    
+    const existente = await Cliente.findOne(query);
     if (existente) return existente;
   }
 
   if (clienteData.crear && clienteData.nombre) {
     const nuevoCliente = new Cliente({
       nombre: clienteData.nombre,
-      documento: clienteData.documento || '',
+      apellido: clienteData.apellido || '',
       telefono: clienteData.telefono || '',
+      instagram: clienteData.instagram || '',
       email: clienteData.email || '',
-      condicionIVA: clienteData.condicionIVA || 'consumidor',
       activo: true
     });
     await nuevoCliente.save();

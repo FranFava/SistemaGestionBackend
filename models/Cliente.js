@@ -5,10 +5,10 @@ const clienteSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  rut: String,
+  apellido: String,
   telefono: String,
+  instagram: String,
   email: String,
-  direccion: String,
   activo: {
     type: Boolean,
     default: true
@@ -16,5 +16,8 @@ const clienteSchema = new mongoose.Schema({
 }, {
   timestamps: true
 });
+
+clienteSchema.index({ nombre: 1, apellido: 1 });
+clienteSchema.index({instagram: 1 }, { sparse: true });
 
 module.exports = mongoose.model('Cliente', clienteSchema);
