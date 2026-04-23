@@ -65,8 +65,9 @@ const crearVenta = async (req, res) => {
         cantidad: item.cantidad,
         cliente: {
           nombre: cliente.nombre,
-          documento: cliente.documento,
-          telefono: cliente.telefono
+          apellido: cliente.apellido || '',
+          telefono: cliente.telefono || '',
+          instagram: cliente.instagram || ''
         },
         numeroSerie: item.numeroSerie,
         usuario: req.user.id,
@@ -143,7 +144,13 @@ const crearVenta = async (req, res) => {
     res.json({
       success: true,
       ticket,
-      cliente: { _id: cliente._id, nombre: cliente.nombre },
+      cliente: { 
+        _id: cliente._id, 
+        nombre: cliente.nombre,
+        apellido: cliente.apellido,
+        telefono: cliente.telefono,
+        instagram: cliente.instagram
+      },
       movimientos: movimientosCreados,
       reserva: generarReserva ? { senia, estado: 'reservado', vencimiento: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000) } : null
     });
