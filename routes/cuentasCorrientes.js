@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { auth, adminOnly } = require('../middleware/auth');
+const { validateObjectId } = require('../utils/validators');
 const {
   getCuentas,
   getCuentaById,
@@ -17,12 +18,12 @@ const {
 router.get('/', auth, getCuentas);
 router.get('/saldos', auth, getSaldos);
 router.get('/entidad', auth, getCuentaPorEntidad);
-router.get('/:id', auth, getCuentaById);
-router.get('/:id/movimientos', auth, getMovimientos);
+router.get('/:id/movimientos', auth, validateObjectId, getMovimientos);
+router.get('/:id', auth, validateObjectId, getCuentaById);
 router.post('/', auth, createCuenta);
-router.put('/:id', auth, updateCuenta);
-router.post('/:id/movimiento', auth, agregarMovimiento);
-router.post('/:id/bloquear', auth, adminOnly, bloquearCuenta);
-router.post('/:id/desbloquear', auth, adminOnly, desbloquearCuenta);
+router.put('/:id', auth, validateObjectId, updateCuenta);
+router.post('/:id/movimiento', auth, validateObjectId, agregarMovimiento);
+router.post('/:id/bloquear', auth, adminOnly, validateObjectId, bloquearCuenta);
+router.post('/:id/desbloquear', auth, adminOnly, validateObjectId, desbloquearCuenta);
 
 module.exports = router;

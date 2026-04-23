@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const PPConfig = require('../models/PPConfig');
+const { validateObjectId } = require('../utils/validators');
 
 router.get('/', async (req, res) => {
   try {
@@ -38,7 +39,21 @@ router.post('/', async (req, res) => {
   }
 });
 
-router.put('/:id', async (req, res) => {
+router.get('/buscar', async (req, res) => {
+  try {
+    const { modelo, capacidad } = req.query;
+    const query = { activo: true };
+    if (modelo) query.modelo = new RegExp(modelo, 'i');
+    if (capacidad) query.capacidad = capacidad;
+    
+    const configs = await PPConfig.find(query).sort({ modelo: 1 });
+    res.json(configs);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+router.put('/:id', validateObjectId, async (req, res) => {
   try {
     const { valor, descripcion, activo } = req.body;
     const config = await PPConfig.findByIdAndUpdate(
@@ -53,7 +68,7 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', validateObjectId, async (req, res) => {
   try {
     const config = await PPConfig.findByIdAndUpdate(
       req.params.id,
@@ -62,20 +77,6 @@ router.delete('/:id', async (req, res) => {
     );
     if (!config) return res.status(404).json({ message: 'No encontrado' });
     res.json({ message: 'Eliminado lógicamente' });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
-
-router.get('/buscar', async (req, res) => {
-  try {
-    const { modelo, capacidad } = req.query;
-    const query = { activo: true };
-    if (modelo) query.modelo = new RegExp(modelo, 'i');
-    if (capacidad) query.capacidad = capacidad;
-    
-    const configs = await PPConfig.find(query).sort({ modelo: 1 });
-    res.json(configs);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { auth } = require('../middleware/auth');
+const { validateObjectId } = require('../utils/validators');
 const {
   getMovimientosCaja,
   getSaldos,
@@ -10,7 +11,7 @@ const {
   getCotizacion
 } = require('../controllers/cajaController');
 
-router.get('/cotizacion', getCotizacion);
+router.get('/cotizacion', auth, getCotizacion);
 
 router.use(auth);
 
@@ -18,6 +19,6 @@ router.get('/', getMovimientosCaja);
 router.get('/saldos', getSaldos);
 router.post('/', createMovimientoCaja);
 router.post('/cotizacion', updateCotizacion);
-router.delete('/:id', deleteMovimientoCaja);
+router.delete('/:id', validateObjectId, deleteMovimientoCaja);
 
 module.exports = router;

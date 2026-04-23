@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { auth } = require('../middleware/auth');
+const { validateObjectId } = require('../utils/validators');
 const {
   getClientes,
   createCliente,
@@ -10,7 +11,7 @@ const {
 
 router.get('/', auth, getClientes);
 router.post('/', auth, createCliente);
-router.put('/:id', auth, updateCliente);
-router.delete('/:id', auth, deleteCliente);
+router.put('/:id', auth, validateObjectId, updateCliente);
+router.delete('/:id', auth, validateObjectId, deleteCliente);
 
 module.exports = router;

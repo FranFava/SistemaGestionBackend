@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { auth, adminOnly } = require('../middleware/auth');
+const { validateObjectId } = require('../utils/validators');
 const {
   getEmpresas,
   getEmpresaById,
@@ -11,10 +12,10 @@ const {
 } = require('../controllers/empresaController');
 
 router.get('/', auth, getEmpresas);
-router.get('/:id', auth, getEmpresaById);
 router.get('/:id/configuracion', auth, getConfiguracion);
+router.get('/:id', auth, validateObjectId, getEmpresaById);
 router.post('/', auth, adminOnly, createEmpresa);
-router.put('/:id', auth, adminOnly, updateEmpresa);
-router.delete('/:id', auth, adminOnly, deleteEmpresa);
+router.put('/:id', auth, adminOnly, validateObjectId, updateEmpresa);
+router.delete('/:id', auth, adminOnly, validateObjectId, deleteEmpresa);
 
 module.exports = router;
