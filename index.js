@@ -242,6 +242,11 @@ const cajaRoutes = require('./routes/caja');
 const ppConfigRoutes = require('./routes/ppconfig');
 const configRoutes = require('./routes/config');
 const alertaRoutes = require('./routes/alertas');
+const empresaRoutes = require('./routes/empresas');
+const planCuentaRoutes = require('./routes/planCuentas');
+const cuentaCorrienteRoutes = require('./routes/cuentasCorrientes');
+const comprobanteRoutes = require('./routes/comprobantes');
+const ventaRoutes = require('./routes/ventas');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/productos', productoRoutes);
@@ -253,6 +258,11 @@ app.use('/api/caja', cajaRoutes);
 app.use('/api/ppconfig', ppConfigRoutes);
 app.use('/api/config', configRoutes);
 app.use('/api/alertas', alertaRoutes);
+app.use('/api/empresas', empresaRoutes);
+app.use('/api/plan-cuentas', planCuentaRoutes);
+app.use('/api/cuentas-corrientes', cuentaCorrienteRoutes);
+app.use('/api/comprobantes', comprobanteRoutes);
+app.use('/api/ventas', ventaRoutes);
 
 app.get('/', (req, res) => {
   res.json({

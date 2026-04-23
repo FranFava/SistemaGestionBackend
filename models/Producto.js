@@ -12,9 +12,11 @@ const mongoose = require('mongoose');
  * @property {number} precioVenta - Precio de venta
  * @property {number} stockMinimo - Stock mínimo para alertas
  * @property {number} garantiaMeses - Meses de garantía
+ * @property {Object} garantiext - Garantía extendida
  * @property {Array} variantes - Variantes del producto (color, capacidad, stock)
  * @property {Array} numeroSerie - Números de serie registrados
  * @property {boolean} activo - Si el producto está activo (soft delete)
+ * @property {string} empresa - ID de empresa (multi-empresa)
  */
 
 const productoSchema = new mongoose.Schema({
@@ -36,7 +38,35 @@ const productoSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
-  garantiaMeses: Number,
+  garantiaMeses: {
+    type: Number,
+    default: 12
+  },
+  garantia: {
+    tipo: {
+      type: String,
+      enum: ['propia', 'fabricante', 'extendida', 'ninguna'],
+      default: 'propia'
+    },
+    meses: {
+      type: Number,
+      default: 12
+    },
+    terminos: String,
+    origen: {
+      type: String,
+      enum: ['nacional', 'importado'],
+      default: 'nacional'
+    },
+    documentacionRequerida: {
+      type: Boolean,
+      default: false
+    },
+    requiereTicket: {
+      type: Boolean,
+      default: true
+    }
+  },
   variantes: {
     type: [{
       color: String,
@@ -49,6 +79,10 @@ const productoSchema = new mongoose.Schema({
     default: []
   },
   numeroSerie: [String],
+  empresa: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Empresa'
+  },
   activo: {
     type: Boolean,
     default: true
@@ -56,5 +90,9 @@ const productoSchema = new mongoose.Schema({
 }, {
   timestamps: true
 });
+
+productoSchema.index({ sku: 1 }, { unique: true });
+productoSchema.index({ empresa: 1, activo: 1 });
+productoSchema.index({ categoria: 1, activo: 1 });
 
 module.exports = mongoose.model('Producto', productoSchema);
