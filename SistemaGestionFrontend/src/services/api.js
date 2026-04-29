@@ -84,6 +84,7 @@ export const authService = {
 
 export const productoService = {
   getAll: (params) => api.get('/productos', { params }),
+  getPublicAll: (params) => api.get('/productos/public', { params }),
   getById: (id) => api.get(`/productos/${id}`),
   create: (data) => api.post('/productos', data),
   update: (id, data) => api.put(`/productos/${id}`, data),

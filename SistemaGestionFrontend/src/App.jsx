@@ -1,8 +1,11 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { DollarProvider } from './context/DollarContext';
+import { CartProvider } from './context/CartContext';
 import Layout from './components/Layout';
+import PublicLayout from './components/PublicLayout';
 import Login from './pages/Login';
+import Homepage from './pages/Homepage';
 import Dashboard from './pages/Dashboard';
 import Productos from './pages/Productos';
 import Movimientos from './pages/Movimientos';
@@ -18,25 +21,29 @@ function App() {
   return (
     <DollarProvider>
       <AuthProvider>
-        <BrowserRouter>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/" element={<Layout />}>
-            <Route index element={<Navigate to="/dashboard" replace />} />
-            <Route path="dashboard" element={<Dashboard />} />
-            <Route path="productos" element={<Productos />} />
-            <Route path="movimientos" element={<Movimientos />} />
-            <Route path="proveedores" element={<Proveedores />} />
-            <Route path="clientes" element={<Clientes />} />
-            <Route path="usuarios" element={<Usuarios />} />
-            <Route path="ppconfig" element={<PPConfig />} />
-            <Route path="caja" element={<Caja />} />
-            <Route path="alertas" element={<Alertas />} />
-            <Route path="nueva-venta" element={<NuevaVenta />} />
-          </Route>
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
-        </BrowserRouter>
+        <CartProvider>
+          <BrowserRouter>
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route element={<PublicLayout />}>
+                <Route path="/" element={<Homepage />} />
+              </Route>
+              <Route path="/" element={<Layout />}>
+                <Route path="dashboard" element={<Dashboard />} />
+                <Route path="productos" element={<Productos />} />
+                <Route path="movimientos" element={<Movimientos />} />
+                <Route path="proveedores" element={<Proveedores />} />
+                <Route path="clientes" element={<Clientes />} />
+                <Route path="usuarios" element={<Usuarios />} />
+                <Route path="ppconfig" element={<PPConfig />} />
+                <Route path="caja" element={<Caja />} />
+                <Route path="alertas" element={<Alertas />} />
+                <Route path="nueva-venta" element={<NuevaVenta />} />
+              </Route>
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </BrowserRouter>
+        </CartProvider>
       </AuthProvider>
     </DollarProvider>
   );

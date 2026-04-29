@@ -36,7 +36,8 @@ function Login() {
 
   useEffect(() => {
     if (user && !loading) {
-      navigate('/dashboard', { replace: true })
+      const redirectTo = user.rol === 'admin' ? '/dashboard' : '/'
+      navigate(redirectTo, { replace: true })
     }
   }, [user, loading, navigate])
 

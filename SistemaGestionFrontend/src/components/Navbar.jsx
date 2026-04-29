@@ -7,11 +7,12 @@
  */
 
 // React Router - Navegación
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 
-// Context - Autenticación y Cotización
+// Context - Autenticación, Cotización y Carrito
 import { useAuth } from '../context/AuthContext';
 import { useDollar } from '../context/DollarContext';
+import { useCart } from '../context/CartContext';
 
 // React - Hooks
 import { useState, useEffect } from 'react';
@@ -29,7 +30,10 @@ const Navbar = () => {
   // ============================================
   // Estado - Variables de estado del componente
   // ============================================
-  
+
+  // Hooks de navegación
+  const navigate = useNavigate();
+
   // Context de autenticación
   const { user, logout } = useAuth();
   
@@ -41,6 +45,9 @@ const Navbar = () => {
   
   // Nombre de la tienda (desde localStorage)
   const [nombreTienda, setNombreTienda] = useState('Stock Nextech');
+
+  // Estado para el menú móvil
+  const [menuOpen, setMenuOpen] = useState(false);
   
   // Contador de alertas de stock
   const [alertasCount, setAlertasCount] = useState(0);
@@ -80,11 +87,17 @@ const Navbar = () => {
   }, [user]);
 
   // ============================================
+  // Context - Carrito
+  // ============================================
+  const { getCartCount } = useCart();
+
+  // ============================================
   // Datos - Definiciones estáticas
   // ============================================
 
   // Elementos del menú de navegación
   const navItems = [
+    { path: '/', label: 'Tienda', icon: 'shop' },
     { path: '/dashboard', label: 'Dashboard', icon: 'grid' },
     { path: '/nueva-venta', label: 'Nueva Venta', icon: 'cart', primary: true },
     { path: '/productos', label: 'Productos', icon: 'box' },
@@ -103,71 +116,74 @@ const Navbar = () => {
   // ============================================
   // Render - Renderizado del componente
   // ============================================
-  
+
   return (
     <nav className="glass-navbar navbar navbar-expand-lg">
       <div className="container-fluid">
         {/* Logo/Nombre de la tienda */}
-        <Link className="navbar-brand fw-bold" to="/dashboard">
-          <i className="bi bi-box-seam me-2"></i>
+        <Link className="navbar-brand fw-bold" to="/">
+          <i className="bi bi-shop me-2"></i>
           {nombreTienda}
         </Link>
-        
+
         {/* Botón hamburguesa para móvil */}
-        <button 
-          className="navbar-toggler" 
-          type="button" 
-          data-bs-toggle="collapse" 
-          data-bs-target="#navbarNav"
+        <button
+          className="navbar-toggler"
+          type="button"
+          onClick={() => setMenuOpen(!menuOpen)}
+          aria-expanded={menuOpen}
         >
           <span className="navbar-toggler-icon"></span>
         </button>
-        
+
         {/* Menú de navegación */}
-        <div className="collapse navbar-collapse" id="navbarNav">
+        <div className={`collapse navbar-collapse ${menuOpen ? 'show' : ''}`} id="navbarNav">
           <ul className="navbar-nav me-auto">
-            {/* Items del menú principal */}
-            {user && navItems.map(item => (
+            {/* Items del menú - visibles si está logueado o es la tienda */}
+            {navItems.map(item => (
               <li className="nav-item" key={item.path}>
-                <Link 
+                <Link
                   className={`nav-link ${location.pathname === item.path ? 'active fw-bold' : ''} ${item.primary ? 'btn btn-success btn-sm ms-2' : ''}`}
                   to={item.path}
+                  onClick={() => setMenuOpen(false)}
                 >
                   <i className={`bi bi-${item.icon}${item.primary ? '' : '-fill'} me-1`}></i>
                   {item.label}
+                  {item.path === '/nueva-venta' && getCartCount() > 0 && (
+                    <span className="badge bg-danger ms-1">{getCartCount()}</span>
+                  )}
                 </Link>
               </li>
             ))}
-            
+
             {/* Items de administrador */}
             {user?.rol === 'admin' && adminItems.map(item => (
               <li className="nav-item" key={item.path}>
-                <Link 
+                <Link
                   className={`nav-link ${location.pathname === item.path ? 'active fw-bold' : ''}`}
                   to={item.path}
+                  onClick={() => setMenuOpen(false)}
                 >
                   <i className={`bi bi-${item.icon}-fill me-1`}></i>
                   {item.label}
                 </Link>
               </li>
             ))}
-            
-            {/* Separador para controles de usuario en móvil */}
-            <li className="nav-item d-lg-none">
-              <hr className="my-2" />
-            </li>
-            
-            {/* Controls de usuario - visibles en desktop */}
-            <li className="nav-item d-none d-lg-block">
-              <span className="nav-link d-flex align-items-center">
-                <span className="glass-badge me-3">
+          </ul>
+
+          {/* Controls de usuario */}
+          <div className="d-flex align-items-center gap-2">
+            {user ? (
+              <>
+                <span className="glass-badge d-none d-md-inline">
                   <i className="bi bi-currency-dollar me-1"></i>
                   USD: {Number(cotizacionDolar).toLocaleString('es-AR')} ARS
                 </span>
                 {alertasCount > 0 && (
-                  <Link 
-                    to="/alertas" 
-                    className="btn btn-outline-danger btn-sm me-3 position-relative"
+                  <Link
+                    to="/alertas"
+                    className="btn btn-outline-danger btn-sm position-relative"
+                    onClick={() => setMenuOpen(false)}
                   >
                     <i className="bi bi-bell-fill"></i>
                     <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
@@ -175,50 +191,27 @@ const Navbar = () => {
                     </span>
                   </Link>
                 )}
-                <span className="me-3">
+                <span className="text-white d-none d-md-inline">
                   <i className="bi bi-person-circle me-1"></i>
                   {user.nombre || user.username}
                 </span>
-                <button 
-                  className="glass-btn btn btn-sm" 
-                  onClick={logout}
+                <button
+                  className="glass-btn btn btn-sm"
+                  onClick={() => { logout(); setMenuOpen(false); }}
                 >
                   <i className="bi bi-box-arrow-right me-1"></i>
                   <span className="d-none d-xl-inline">Cerrar Sesión</span>
                 </button>
-              </span>
-            </li>
-          </ul>
-          
-          {/* Controls de usuario para móvil - dentro del menú */}
-          <div className="d-lg-none pb-2">
-            <div className="d-flex flex-column gap-2">
-              <div className="glass-badge px-3 py-2 mx-3">
-                <i className="bi bi-currency-dollar me-2"></i>
-                USD: {Number(cotizacionDolar).toLocaleString('es-AR')} ARS
-              </div>
-              {alertasCount > 0 && (
-                <Link 
-                  to="/alertas" 
-                  className="btn btn-outline-danger btn-sm mx-3"
-                >
-                  <i className="bi bi-bell-fill me-2"></i>
-                  Alertas
-                  <span className="badge bg-danger ms-2">{alertasCount}</span>
-                </Link>
-              )}
-              <div className="text-white px-3 py-2 mx-3">
-                <i className="bi bi-person-circle me-2"></i>
-                {user.nombre || user.username}
-              </div>
-              <button 
-                className="glass-btn btn btn-sm mx-3" 
-                onClick={logout}
+              </>
+            ) : (
+              <button
+                className="btn btn-success btn-sm"
+                onClick={() => { navigate('/login'); setMenuOpen(false); }}
               >
-                <i className="bi bi-box-arrow-right me-2"></i>
-                Cerrar Sesión
+                <i className="bi bi-box-arrow-in-right me-1"></i>
+                Iniciar Sesión
               </button>
-            </div>
+            )}
           </div>
         </div>
       </div>

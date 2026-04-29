@@ -4,6 +4,7 @@ const { auth } = require('../middleware/auth');
 const { validateObjectId } = require('../utils/validators');
 const {
   getProductos,
+  getProductosPublic,
   getProductoById,
   createProducto,
   updateProducto,
@@ -34,6 +35,7 @@ const {
  *         description: Error del servidor
  */
 router.get('/', auth, getProductos);
+router.get('/public', getProductosPublic);
 
 /**
  * @swagger

@@ -118,8 +118,27 @@ const checkSku = async (req, res) => {
   }
 };
 
+/**
+ * Obtiene productos para la tienda pública (sin precios).
+ * @async
+ * @function getProductosPublic
+ * @param {Object} req - Request de Express
+ * @param {Object} res - Response de Express
+ * @returns {Promise<void>}
+ */
+const getProductosPublic = async (req, res) => {
+  try {
+    const productos = await Producto.find({ activo: true })
+      .select('nombre sku marca categoria descripcion variantes garantia createdAt');
+    res.json(productos);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
   getProductos,
+  getProductosPublic,
   getProductoById,
   createProducto,
   updateProducto,
