@@ -1,0 +1,25 @@
+/**
+ * ============================================
+ * Movimientos Page Styles
+ * Sistema Francisco
+ * ============================================
+ */
+
+/* Movimientos specific styles */
+.movimientos-dropdown {
+  z-index: 1000 !important;
+  max-height: 200px !important;
+  overflow-y: auto !important;
+}
+
+.movimientos-popover {
+  position: absolute;
+  background: rgba(30, 30, 50, 0.95);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 10px;
+  color: #ffffff;
+  z-index: 1050;
+  min-width: 200px;
+}

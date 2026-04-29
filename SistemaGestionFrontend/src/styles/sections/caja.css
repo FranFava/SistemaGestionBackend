@@ -1,0 +1,11 @@
+/**
+ * ============================================
+ * Caja Page Styles
+ * Sistema Francisco
+ * ============================================
+ */
+
+/* Caja specific styles */
+.caja-sticky-sidebar {
+  top: 70px !important;
+}

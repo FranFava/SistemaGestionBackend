@@ -1,0 +1,16 @@
+/**
+ * ============================================
+ * Productos Page Styles
+ * Sistema Francisco
+ * ============================================
+ */
+
+/* Productos specific styles */
+.productos-modal-backdrop {
+  background-color: rgba(0, 0, 0, 0.6) !important;
+}
+
+.productos-modal-body {
+  max-height: 70vh !important;
+  overflow-y: auto !important;
+}

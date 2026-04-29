@@ -1,0 +1,31 @@
+/**
+ * ============================================
+ * Nueva Venta Page Styles
+ * Sistema Francisco
+ * ============================================
+ */
+
+/* Nueva Venta specific styles */
+.step-circle {
+  width: 36px !important;
+  height: 36px !important;
+}
+
+.step-divider {
+  height: 2px;
+  min-width: 50px;
+}
+
+.venta-sticky-sidebar {
+  top: 70px !important;
+}
+
+.venta-dropdown {
+  z-index: 1000 !important;
+  max-height: 300px !important;
+  overflow-y: auto !important;
+}
+
+.venta-cantidad-input {
+  width: 70px !important;
+}
