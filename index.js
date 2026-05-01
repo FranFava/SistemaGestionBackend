@@ -248,6 +248,7 @@ const cuentaCorrienteRoutes = require('./routes/cuentasCorrientes');
 const comprobanteRoutes = require('./routes/comprobantes');
 const ventaRoutes = require('./routes/ventas');
 const tercerosRoutes = require('./routes/terceros');
+const tiposCambioRoutes = require('./routes/tiposCambio');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/productos', productoRoutes);
@@ -265,6 +266,7 @@ app.use('/api/cuentas-corrientes', cuentaCorrienteRoutes);
 app.use('/api/comprobantes', comprobanteRoutes);
 app.use('/api/ventas', ventaRoutes);
 app.use('/api/terceros', tercerosRoutes);
+app.use('/api/tipos-cambio', tiposCambioRoutes);
 
 app.get('/', (req, res) => {
   res.json({
