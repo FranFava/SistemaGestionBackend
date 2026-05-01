@@ -208,17 +208,46 @@ const updateCotizacion = async (req, res, next) => {
 
 const getCotizacion = async (req, res, next) => {
   try {
-    let config = await Config.findOne();
-    
-    if (!config) {
-      config = { cotizacionDolar: 1000, fechaCotizacion: new Date() };
+    let cotizacionDolar = null;
+    let fechaActualizacion = null;
+
+    // 1. Intentar obtener cotización en vivo desde DolarAPI
+    try {
+      const response = await fetch('https://dolarapi.com/v1/dolares/oficial');
+      if (response.ok) {
+        const data = await response.json();
+        cotizacionDolar = data.venta;
+        fechaActualizacion = data.fechaActualizacion;
+        console.log(`[DolarAPI] USD oficial → compra: $${data.compra}, venta: $${data.venta}`);
+      }
+    } catch (apiError) {
+      console.warn('[DolarAPI] No se pudo obtener cotización, usando fallback:', apiError.message);
     }
-    
+
+    // 2. Obtener config local
+    let config = await Config.findOne();
+
+    // 3. Si obtuvimos cotización en vivo, actualizar Config
+    if (cotizacionDolar) {
+      if (!config) {
+        config = new Config({
+          cotizacionDolar,
+          fechaCotizacion: new Date(fechaActualizacion || Date.now())
+        });
+      } else {
+        config.cotizacionDolar = cotizacionDolar;
+        config.fechaCotizacion = new Date(fechaActualizacion || Date.now());
+      }
+      await config.save();
+    }
+
+    // 4. Retornar resultado
     return res.json({
       success: true,
       data: {
-        cotizacionDolar: config.cotizacionDolar || 1000,
-        fechaCotizacion: config.fechaCotizacion
+        cotizacionDolar: cotizacionDolar || config?.cotizacionDolar || 1000,
+        fechaCotizacion: fechaActualizacion ? new Date(fechaActualizacion) : config?.fechaCotizacion,
+        fuente: cotizacionDolar ? 'dolarapi' : 'config'
       }
     });
   } catch (error) {
