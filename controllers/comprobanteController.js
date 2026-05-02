@@ -8,6 +8,55 @@ const { toDecimal128, toNumber, round } = require('../utils/decimal.utils');
 const { calcularEquivalentes, obtenerCotizacion } = require('../utils/cambio.utils');
 const comprobanteService = require('../services/comprobante.service');
 
+/**
+ * @swagger
+ * tags:
+ *   name: Comprobantes
+ *   description: Comprobantes financieros (facturas, remitos, NC, ND, REC, SENIA) con items embebidos
+ * /comprobantes:
+ *   get:
+ *     tags: [Comprobantes]
+ *     summary: Lista comprobantes con filtros
+ *     parameters:
+ *       - in: query name: id_cuenta schema: type: string
+ *       - in: query name: tipo schema: type: string enum: [FACT,REC,NC,ND,SENIA,REM]
+ *       - in: query name: origen schema: type: string enum: [venta,compra]
+ *       - in: query name: estado schema: type: string enum: [pendiente,parcial,cancelado]
+ *       - in: query name: moneda schema: type: string enum: [ARS,USD]
+ *   post:
+ *     tags: [Comprobantes]
+ *     summary: Crea un comprobante con items (auto-genera movimientos contables y stock)
+ *     requestBody: required: true content: application/json: schema: type: object required: [id_cuenta,tipo,moneda,items] properties: id_cuenta: type: string tipo: type: string enum: [FACT,REC,NC,ND,SENIA,REM] origen: type: string enum: [venta,compra] moneda: type: string enum: [ARS,USD] items: type: array items: type: object properties: id_producto: type: string cantidad: type: number precio_unitario: type: number descuento_pct: type: number moneda: type: string cotizacion_usado: type: number nro_comprobante: type: string fecha_vencimiento: type: string format: date observaciones: type: string id_remito_origen: type: string
+ * /comprobantes/pendientes:
+ *   get:
+ *     tags: [Comprobantes]
+ *     summary: Lista comprobantes pendientes y parciales
+ * /comprobantes/vencidos:
+ *   get:
+ *     tags: [Comprobantes]
+ *     summary: Lista comprobantes vencidos
+ * /comprobantes/{id}/pago:
+ *   post:
+ *     tags: [Comprobantes]
+ *     summary: Registra un pago parcial o total
+ *     requestBody: content: application/json: schema: type: object properties: monto: type: number
+ * /comprobantes/{id}/anular:
+ *   post:
+ *     tags: [Comprobantes]
+ *     summary: Anula un comprobante
+ *     requestBody: content: application/json: schema: type: object properties: motivo: type: string
+ * /comprobantes/{id}/diferencia-cambio:
+ *   post:
+ *     tags: [Comprobantes]
+ *     summary: Calcula diferencia de cambio entre cotizacion original y de pago
+ *     requestBody: required: true content: application/json: schema: type: object required: [cotizacion] properties: cotizacion: type: number
+ * /comprobantes/matching:
+ *   post:
+ *     tags: [Comprobantes]
+ *     summary: Compara items de factura vs remito vinculado
+ *     requestBody: required: true content: application/json: schema: type: object required: [id_remito_origen,items] properties: id_remito_origen: type: string items: type: array items: type: object
+ */
+
 const getComprobantes = async (req, res) => {
   try {
     const { id_cuenta, tipo, estado, moneda, origen, desde, hasta } = req.query;

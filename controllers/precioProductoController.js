@@ -2,6 +2,38 @@ const mongoose = require('mongoose');
 const PrecioProducto = require('../models/PrecioProducto');
 const { toDecimal128, toNumber, round } = require('../utils/decimal.utils');
 
+/**
+ * @swagger
+ * /precios-producto:
+ *   get:
+ *     tags: [Precios Producto]
+ *     summary: Lista todos los precios
+ *     parameters:
+ *       - in: query name: id_producto schema: type: string
+ *       - in: query name: id_lista schema: type: string
+ *       - in: query name: moneda schema: type: string enum: [ARS, USD]
+ *   post:
+ *     tags: [Precios Producto]
+ *     summary: Crea un precio para producto
+ *     requestBody: required: true content: application/json: schema: type: object required: [id_producto, id_lista, precio, moneda, vigencia_desde] properties: id_producto: type: string id_lista: type: string precio: type: number moneda: type: string vigencia_desde: type: string format: date vigencia_hasta: type: string format: date
+ * /precios-producto/vigente/{productoId}/{listaId}:
+ *   get:
+ *     tags: [Precios Producto]
+ *     summary: Obtiene precio vigente de un producto en una lista
+ *     parameters:
+ *       - in: path name: productoId schema: type: string required: true
+ *       - in: path name: listaId schema: type: string required: true
+ *       - in: query name: fecha schema: type: string format: date
+ * /precios-producto/producto/{productoId}:
+ *   get:
+ *     tags: [Precios Producto]
+ *     summary: Obtiene precios de un producto en todas las listas
+ * /precios-producto/lista/{listaId}:
+ *   get:
+ *     tags: [Precios Producto]
+ *     summary: Obtiene precios de una lista para todos los productos
+ */
+
 const getPrecios = async (req, res) => {
   try {
     const { id_producto, id_lista, moneda, activo } = req.query;

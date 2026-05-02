@@ -1,5 +1,34 @@
 const ListaPrecio = require('../models/ListaPrecio');
 
+/**
+ * @swagger
+ * /listas-precio:
+ *   get:
+ *     tags: [Listas de Precio]
+ *     summary: Lista todas las listas de precios
+ *     parameters:
+ *       - in: query name: activa schema: type: boolean
+ *       - in: query name: moneda schema: type: string enum: [ARS, USD]
+ *   post:
+ *     tags: [Listas de Precio]
+ *     summary: Crea una lista de precios
+ *     requestBody: required: true content: application/json: schema: type: object required: [nombre, moneda] properties: nombre: type: string moneda: type: string enum: [ARS, USD] descripcion: type: string
+ * /listas-precio/activas:
+ *   get:
+ *     tags: [Listas de Precio]
+ *     summary: Obtiene solo listas activas
+ * /listas-precio/{id}:
+ *   get:
+ *     tags: [Listas de Precio]
+ *     summary: Obtiene lista por ID
+ *   put:
+ *     tags: [Listas de Precio]
+ *     summary: Actualiza lista
+ *   delete:
+ *     tags: [Listas de Precio]
+ *     summary: Elimina (desactiva) lista
+ */
+
 const getListas = async (req, res) => {
   try {
     const { activa, moneda } = req.query;

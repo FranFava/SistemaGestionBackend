@@ -1,5 +1,33 @@
 const Categoria = require('../models/Categoria');
 
+/**
+ * @swagger
+ * /categorias:
+ *   get:
+ *     tags: [Categorias]
+ *     summary: Lista todas las categorias
+ *     parameters:
+ *       - in: query name: activa schema: type: boolean
+ *   post:
+ *     tags: [Categorias]
+ *     summary: Crea una categoria
+ *     requestBody: required: true content: application/json: schema: type: object required: [nombre] properties: nombre: type: string id_padre: type: string descripcion: type: string
+ * /categorias/arbol:
+ *   get:
+ *     tags: [Categorias]
+ *     summary: Obtiene arbol completo de categorias
+ * /categorias/{id}:
+ *   get:
+ *     tags: [Categorias]
+ *     summary: Obtiene categoria por ID
+ *   put:
+ *     tags: [Categorias]
+ *     summary: Actualiza categoria
+ *   delete:
+ *     tags: [Categorias]
+ *     summary: Elimina (desactiva) categoria
+ */
+
 const getCategorias = async (req, res) => {
   try {
     const { activa } = req.query;
