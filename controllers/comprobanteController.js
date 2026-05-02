@@ -1,6 +1,7 @@
 const Comprobante = require('../models/Comprobante');
 const Empresa = require('../models/Empresa');
 const CuentaCorriente = require('../models/CuentaCorriente');
+const Tercero = require('../models/Tercero');
 const { auditar } = require('../middleware/audit');
 
 const getComprobantes = async (req, res) => {
@@ -69,36 +70,44 @@ const createComprobante = async (req, res) => {
     
     if (formaPago?.tipo === 'cta_cte' && cliente?.clienteId) {
       try {
-        let ctacte = await CuentaCorriente.findOne({
-          empresa: empresaId,
-          'titular.tipo': 'cliente',
-          'titular.entidad': cliente.clienteId,
-          activa: true
-        });
-        
-        if (!ctacte) {
-          ctacte = new CuentaCorriente({
-            empresa: empresaId,
-            titular: {
-              tipo: 'cliente',
-              entidad: cliente.clienteId,
-              nombre: cliente.nombre,
-              documento: cliente.numeroDocumento,
-              condicionIVA: cliente.condicionIVA
-            }
+        const moneda = req.body.moneda || 'ARS';
+        const tercero = await Tercero.findById(cliente.clienteId);
+
+        if (!tercero) {
+          console.error('Tercero no encontrado para ctacte:', cliente.clienteId);
+        } else {
+          let ctacte = await CuentaCorriente.findOne({
+            id_tercero: cliente.clienteId,
+            tipo: 'cliente',
+            moneda,
+            activa: true
           });
+
+          if (!ctacte) {
+            ctacte = new CuentaCorriente({
+              id_tercero: cliente.clienteId,
+              tipo: 'cliente',
+              moneda,
+              limite_credito: tercero.limite_credito_ars || 0,
+              dias_vencimiento_default: 30,
+              permite_senia: false
+            });
+            await ctacte.save();
+          }
+
+          ctacte.agregarMovimiento({
+            tipo: 'cargo',
+            concepto: `${req.body.tipo} ${letraValida} ${puntoVenta}-${numeroSiguiente}`,
+            origen: { tipo: 'comprobante', id: comprobante._id },
+            comprobante: `${String(puntoVenta).padStart(4, '0')}-${String(numeroSiguiente).padStart(8, '0')}`,
+            importe: moneda === 'USD' ? (req.body.totalUSD || comprobante.total) : comprobante.total,
+            observaciones: `Venta a credito en ${moneda}`
+          });
+
           await ctacte.save();
         }
-        
-        await ctacte.agregarMovimiento({
-          tipo: 'cargo',
-          concepto: `${req.body.tipo} ${letraValida} ${puntoVenta}-${numeroSiguiente}`,
-          origen: { tipo: 'comprobante', id: comprobante._id },
-          importe: { ARS: comprobante.total, USD: req.body.totalUSD || 0 },
-          moneda: req.body.moneda || 'ARS'
-        });
       } catch (err) {
-        console.error('Error al atualizar ctacte:', err.message);
+        console.error('Error al actualizar ctacte:', err.message);
       }
     }
     

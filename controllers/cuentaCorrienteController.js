@@ -1,205 +1,357 @@
+const mongoose = require('mongoose');
 const CuentaCorriente = require('../models/CuentaCorriente');
+const Tercero = require('../models/Tercero');
 
 const getCuentas = async (req, res) => {
   try {
-    const { empresa, tipo, estado, busca } = req.query;
-    const query = { activa: true };
-    
-    if (empresa) query.empresa = empresa;
-    if (tipo) query['titular.tipo'] = tipo;
-    if (estado) query.estado = estado;
-    if (busca) {
-      query['titular.nombre'] = { $regex: busca, $options: 'i' };
-    }
-    
+    const { id_tercero, tipo, moneda, activa } = req.query;
+    const query = {};
+
+    if (id_tercero) query.id_tercero = id_tercero;
+    if (tipo) query.tipo = tipo;
+    if (moneda) query.moneda = moneda;
+    if (activa !== undefined) query.activa = activa === 'true';
+
     const cuentas = await CuentaCorriente.find(query)
-      .populate('empresa', 'nombre')
-      .sort({ 'titular.nombre': 1 });
-    
-    res.json(cuentas);
+      .populate('id_tercero', 'razon_social nombre email telefono')
+      .sort({ 'id_tercero.razon_social': 1, moneda: 1 });
+
+    const resultado = cuentas.map(c => ({
+      ...c.toObject(),
+      saldo_calculado: c.saldo_calculado
+    }));
+
+    res.json({ success: true, data: resultado });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
 const getCuentaById = async (req, res) => {
   try {
     const cuenta = await CuentaCorriente.findById(req.params.id)
-      .populate('empresa', 'nombre');
-    
-    if (!cuenta) return res.status(404).json({ message: 'Cuenta no encontrada' });
-    res.json(cuenta);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
+      .populate('id_tercero', 'razon_social nombre email telefono');
 
-const getCuentaPorEntidad = async (req, res) => {
-  try {
-    const { empresa, tipo, entidad } = req.query;
-    
-    const cuenta = await CuentaCorriente.findOne({
-      empresa,
-      'titular.tipo': tipo,
-      'titular.entidad': entidad,
-      activa: true
-    });
-    
     if (!cuenta) {
-      return res.status(404).json({ message: 'Cuenta no encontrada' });
+      return res.status(404).json({ success: false, message: 'Cuenta no encontrada' });
     }
-    res.json(cuenta);
+
+    res.json({ success: true, data: { ...cuenta.toObject(), saldo_calculado: cuenta.saldo_calculado } });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
 const createCuenta = async (req, res) => {
   try {
-    const { empresa, titular } = req.body;
-    
-    const existente = await CuentaCorriente.findOne({
-      empresa,
-      'titular.tipo': titular.tipo,
-      'titular.entidad': titular.entidad,
-      activa: true
-    });
-    
-    if (existente) {
-      return res.status(400).json({ message: 'Ya existe una cuenta corriente para esta entidad' });
+    const { id_tercero, tipo, moneda, limite_credito, dias_vencimiento_default, permite_senia } = req.body;
+
+    if (!id_tercero || !tipo || !moneda) {
+      return res.status(400).json({ success: false, message: 'id_tercero, tipo y moneda son requeridos' });
     }
-    
-    const cuenta = new CuentaCorriente(req.body);
+
+    if (!['cliente', 'proveedor'].includes(tipo)) {
+      return res.status(400).json({ success: false, message: 'tipo debe ser cliente o proveedor' });
+    }
+
+    if (!['ARS', 'USD'].includes(moneda)) {
+      return res.status(400).json({ success: false, message: 'moneda debe ser ARS o USD' });
+    }
+
+    const tercero = await Tercero.findById(id_tercero);
+    if (!tercero) {
+      return res.status(404).json({ success: false, message: 'Tercero no encontrado' });
+    }
+
+    if (tipo === 'cliente' && !tercero.es_cliente) {
+      return res.status(400).json({ success: false, message: 'El tercero no es cliente' });
+    }
+    if (tipo === 'proveedor' && !tercero.es_proveedor) {
+      return res.status(400).json({ success: false, message: 'El tercero no es proveedor' });
+    }
+
+    const existente = await CuentaCorriente.findOne({ id_tercero, tipo, moneda, activa: true });
+    if (existente) {
+      return res.status(400).json({ success: false, message: 'Ya existe una cuenta corriente para este tercero con esta moneda' });
+    }
+
+    const cuenta = new CuentaCorriente({
+      id_tercero,
+      tipo,
+      moneda,
+      limite_credito: limite_credito || 0,
+      dias_vencimiento_default: dias_vencimiento_default || 30,
+      permite_senia: !!permite_senia
+    });
+
     await cuenta.save();
-    res.status(201).json(cuenta);
+
+    res.status(201).json({ success: true, data: cuenta });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    if (error.code === 11000) {
+      return res.status(400).json({ success: false, message: 'Ya existe una cuenta corriente para este tercero con esta moneda' });
+    }
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
 const updateCuenta = async (req, res) => {
   try {
-    const cuenta = await CuentaCorriente.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true, runValidators: true }
-    );
-    if (!cuenta) return res.status(404).json({ message: 'Cuenta no encontrada' });
-    res.json(cuenta);
+    const cuenta = await CuentaCorriente.findById(req.params.id);
+    if (!cuenta) {
+      return res.status(404).json({ success: false, message: 'Cuenta no encontrada' });
+    }
+
+    const { limite_credito, dias_vencimiento_default, permite_senia, saldo_senia_disponible } = req.body;
+
+    if (limite_credito !== undefined) cuenta.limite_credito = limite_credito;
+    if (dias_vencimiento_default !== undefined) cuenta.dias_vencimiento_default = dias_vencimiento_default;
+    if (permite_senia !== undefined) cuenta.permite_senia = permite_senia;
+    if (saldo_senia_disponible !== undefined) cuenta.saldo_senia_disponible = saldo_senia_disponible;
+
+    await cuenta.save();
+
+    res.json({ success: true, data: cuenta });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const cerrarCuenta = async (req, res) => {
+  try {
+    const cuenta = await CuentaCorriente.findById(req.params.id);
+    if (!cuenta) {
+      return res.status(404).json({ success: false, message: 'Cuenta no encontrada' });
+    }
+
+    const { saldo } = cuenta.saldo_calculado;
+    if (saldo !== 0) {
+      return res.status(400).json({ success: false, message: 'No se puede cerrar una cuenta con saldo pendiente' });
+    }
+
+    cuenta.activa = false;
+    await cuenta.save();
+
+    res.json({ success: true, message: 'Cuenta cerrada' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const getCuentasPorTercero = async (req, res) => {
+  try {
+    const { terceroId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(terceroId)) {
+      return res.status(400).json({ success: false, message: 'ID de tercero invalido' });
+    }
+
+    const cuentas = await CuentaCorriente.find({ id_tercero: terceroId })
+      .populate('id_tercero', 'razon_social nombre email')
+      .sort({ tipo: 1, moneda: 1 });
+
+    const resultado = cuentas.map(c => ({
+      ...c.toObject(),
+      saldo_calculado: c.saldo_calculado
+    }));
+
+    res.json({ success: true, data: resultado });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const buscarCuenta = async (req, res) => {
+  try {
+    const { q, tipo, moneda } = req.query;
+
+    if (!q || q.length < 2) {
+      return res.status(400).json({ success: false, message: 'Busqueda requiere al menos 2 caracteres' });
+    }
+
+    const query = {
+      activa: true,
+      $or: [
+        { 'id_tercero.razon_social': { $regex: q, $options: 'i' } },
+        { 'id_tercero.nombre': { $regex: q, $options: 'i' } },
+        { 'id_tercero.apellido': { $regex: q, $options: 'i' } }
+      ]
+    };
+
+    if (tipo) query.tipo = tipo;
+    if (moneda) query.moneda = moneda;
+
+    const cuentas = await CuentaCorriente.find(query)
+      .populate('id_tercero', 'razon_social nombre email telefono')
+      .sort({ 'id_tercero.razon_social': 1 })
+      .limit(20);
+
+    const resultado = cuentas.map(c => ({
+      ...c.toObject(),
+      saldo_calculado: c.saldo_calculado
+    }));
+
+    res.json({ success: true, data: resultado });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
 const agregarMovimiento = async (req, res) => {
   try {
     const cuenta = await CuentaCorriente.findById(req.params.id);
-    if (!cuenta) return res.status(404).json({ message: 'Cuenta no encontrada' });
-    
-    await cuenta.agregarMovimiento(req.body);
-    res.json(cuenta);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
+    if (!cuenta) {
+      return res.status(404).json({ success: false, message: 'Cuenta no encontrada' });
+    }
 
-const bloquearCuenta = async (req, res) => {
-  try {
-    const { motivo } = req.body;
-    const cuenta = await CuentaCorriente.findById(req.params.id);
-    if (!cuenta) return res.status(404).json({ message: 'Cuenta no encontrada' });
-    
-    cuenta.bloqueo = {
-      activo: true,
-      motivo,
-      fecha: new Date(),
-      por: req.user?.id
-    };
-    cuenta.estado = 'bloqueada';
-    
-    await cuenta.save();
-    res.json(cuenta);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
+    const { tipo, concepto, importe, origen, comprobante, observaciones } = req.body;
 
-const desbloquearCuenta = async (req, res) => {
-  try {
-    const cuenta = await CuentaCorriente.findById(req.params.id);
-    if (!cuenta) return res.status(404).json({ message: 'Cuenta no encontrada' });
-    
-    cuenta.bloqueo = { activo: false };
-    cuenta.estado = 'activa';
-    
-    await cuenta.save();
-    res.json(cuenta);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
+    if (!tipo || !['cargo', 'abono', 'ajuste', 'senia'].includes(tipo)) {
+      return res.status(400).json({ success: false, message: 'tipo de movimiento invalido' });
+    }
 
-const getMovimientos = async (req, res) => {
-  try {
-    const cuenta = await CuentaCorriente.findById(req.params.id);
-    if (!cuenta) return res.status(404).json({ message: 'Cuenta no encontrada' });
-    
-    const { desde, hasta } = req.query;
-    let movimientos = cuenta.movimientos;
-    
-    if (desde || hasta) {
-      movimientos = movimientos.filter(m => {
-        if (desde && new Date(m.fecha) < new Date(desde)) return false;
-        if (hasta && new Date(m.fecha) > new Date(hasta)) return false;
-        return true;
+    if (importe === undefined || importe === null || importe <= 0) {
+      return res.status(400).json({ success: false, message: 'importe debe ser un numero positivo' });
+    }
+
+    if (!concepto) {
+      return res.status(400).json({ success: false, message: 'concepto es requerido' });
+    }
+
+    const limite = cuenta.verificarLimiteCredito();
+    if (tipo === 'cargo' && !limite.dentroLimite) {
+      return res.status(400).json({
+        success: false,
+        message: limite.motivo,
+        detalle: limite
       });
     }
-    
-    res.json(movimientos);
+
+    cuenta.agregarMovimiento({
+      tipo,
+      concepto,
+      importe,
+      origen: origen || null,
+      comprobante: comprobante || null,
+      observaciones: observaciones || null
+    });
+
+    await cuenta.save();
+
+    res.json({ success: true, data: cuenta, saldo_calculado: cuenta.saldo_calculado });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    if (error.message === 'No se pueden agregar movimientos a una cuenta inactiva' || error.message === 'Cuenta inactiva') {
+      return res.status(400).json({ success: false, message: error.message });
+    }
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
-const getSaldos = async (req, res) => {
+const getEstadoCuenta = async (req, res) => {
   try {
-    const { empresa, tipo } = req.query;
-    const query = { empresa, activa: true };
-    if (tipo) query['titular.tipo'] = tipo;
-    
-    const cuentas = await CuentaCorriente.find(query);
-    
-    const saldos = {
-      ARS: { total: 0, aFavor: 0, enContra: 0 },
-      USD: { total: 0, aFavor: 0, enContra: 0 }
-    };
-    
-    cuentas.forEach(c => {
-      saldos.ARS.total += c.saldo.ARS;
-      saldos.USD.total += c.saldo.USD;
-      
-      if (c.saldo.ARS > 0) saldos.ARS.aFavor += c.saldo.ARS;
-      else saldos.ARS.enContra += Math.abs(c.saldo.ARS);
-      
-      if (c.saldo.USD > 0) saldos.USD.aFavor += c.saldo.USD;
-      else saldos.USD.enContra += Math.abs(c.saldo.USD);
-    });
-    
-    res.json(saldos);
+    const cuenta = await CuentaCorriente.findById(req.params.id);
+    if (!cuenta) {
+      return res.status(404).json({ success: false, message: 'Cuenta no encontrada' });
+    }
+
+    const { desde, hasta } = req.query;
+    const movimientos = cuenta.getEstadoCuenta(desde, hasta);
+
+    res.json({ success: true, data: { cuenta: cuenta.toObject(), saldo_calculado: cuenta.saldo_calculado, movimientos } });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const getSaldo = async (req, res) => {
+  try {
+    const cuenta = await CuentaCorriente.findById(req.params.id);
+    if (!cuenta) {
+      return res.status(404).json({ success: false, message: 'Cuenta no encontrada' });
+    }
+
+    res.json({ success: true, data: { id: cuenta._id, moneda: cuenta.moneda, tipo: cuenta.tipo, saldo_calculado: cuenta.saldo_calculado } });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const getCuentasVencidas = async (req, res) => {
+  try {
+    const { tipo, moneda } = req.query;
+    const query = { activa: true, limite_credito: { $gt: 0 } };
+    if (tipo) query.tipo = tipo;
+    if (moneda) query.moneda = moneda;
+
+    const cuentas = await CuentaCorriente.find(query)
+      .populate('id_tercero', 'razon_social nombre email');
+
+    const vencidas = cuentas
+      .map(c => ({ ...c.toObject(), saldo_calculado: c.saldo_calculado, limite: c.verificarLimiteCredito() }))
+      .filter(c => !c.limite.dentroLimite);
+
+    res.json({ success: true, data: vencidas });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const getSaldosResumen = async (req, res) => {
+  try {
+    const { id_tercero } = req.query;
+    const query = { activa: true };
+    if (id_tercero) query.id_tercero = id_tercero;
+
+    const cuentas = await CuentaCorriente.find(query)
+      .populate('id_tercero', 'razon_social nombre');
+
+    const resumen = {
+      cliente: {
+        ARS: { cantidad: 0, totalDebe: 0, totalHaber: 0, totalSaldo: 0 },
+        USD: { cantidad: 0, totalDebe: 0, totalHaber: 0, totalSaldo: 0 }
+      },
+      proveedor: {
+        ARS: { cantidad: 0, totalDebe: 0, totalHaber: 0, totalSaldo: 0 },
+        USD: { cantidad: 0, totalDebe: 0, totalHaber: 0, totalSaldo: 0 }
+      }
+    };
+
+    cuentas.forEach(c => {
+      const { debe, haber, saldo } = c.saldo_calculado;
+      const key = c.tipo;
+      const curr = c.moneda;
+
+      resumen[key][curr].cantidad += 1;
+      resumen[key][curr].totalDebe += debe;
+      resumen[key][curr].totalHaber += haber;
+      resumen[key][curr].totalSaldo += saldo;
+    });
+
+    Object.keys(resumen).forEach(tipo => {
+      Object.keys(resumen[tipo]).forEach(moneda => {
+        resumen[tipo][moneda].totalDebe = Math.round(resumen[tipo][moneda].totalDebe * 100) / 100;
+        resumen[tipo][moneda].totalHaber = Math.round(resumen[tipo][moneda].totalHaber * 100) / 100;
+        resumen[tipo][moneda].totalSaldo = Math.round(resumen[tipo][moneda].totalSaldo * 100) / 100;
+      });
+    });
+
+    res.json({ success: true, data: resumen });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
 module.exports = {
   getCuentas,
   getCuentaById,
-  getCuentaPorEntidad,
   createCuenta,
   updateCuenta,
+  cerrarCuenta,
+  getCuentasPorTercero,
+  buscarCuenta,
   agregarMovimiento,
-  bloquearCuenta,
-  desbloquearCuenta,
-  getMovimientos,
-  getSaldos
+  getEstadoCuenta,
+  getSaldo,
+  getCuentasVencidas,
+  getSaldosResumen
 };

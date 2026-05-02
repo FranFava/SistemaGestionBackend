@@ -5,25 +5,31 @@ const { validateObjectId } = require('../utils/validators');
 const {
   getCuentas,
   getCuentaById,
-  getCuentaPorEntidad,
   createCuenta,
   updateCuenta,
+  cerrarCuenta,
+  getCuentasPorTercero,
+  buscarCuenta,
   agregarMovimiento,
-  bloquearCuenta,
-  desbloquearCuenta,
-  getMovimientos,
-  getSaldos
+  getEstadoCuenta,
+  getSaldo,
+  getCuentasVencidas,
+  getSaldosResumen
 } = require('../controllers/cuentaCorrienteController');
 
-router.get('/', auth, getCuentas);
-router.get('/saldos', auth, getSaldos);
-router.get('/entidad', auth, getCuentaPorEntidad);
-router.get('/:id/movimientos', auth, validateObjectId, getMovimientos);
-router.get('/:id', auth, validateObjectId, getCuentaById);
-router.post('/', auth, createCuenta);
-router.put('/:id', auth, validateObjectId, updateCuenta);
-router.post('/:id/movimiento', auth, validateObjectId, agregarMovimiento);
-router.post('/:id/bloquear', auth, adminOnly, validateObjectId, bloquearCuenta);
-router.post('/:id/desbloquear', auth, adminOnly, validateObjectId, desbloquearCuenta);
+router.use(auth);
+
+router.get('/', getCuentas);
+router.get('/saldos', getSaldosResumen);
+router.get('/vencidas', getCuentasVencidas);
+router.get('/buscar', buscarCuenta);
+router.get('/tercero/:terceroId', getCuentasPorTercero);
+router.get('/:id', validateObjectId, getCuentaById);
+router.get('/:id/estado-cuenta', validateObjectId, getEstadoCuenta);
+router.get('/:id/saldo', validateObjectId, getSaldo);
+router.post('/', adminOnly, createCuenta);
+router.post('/:id/movimientos', validateObjectId, agregarMovimiento);
+router.put('/:id', validateObjectId, updateCuenta);
+router.delete('/:id', adminOnly, validateObjectId, cerrarCuenta);
 
 module.exports = router;
