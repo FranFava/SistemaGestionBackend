@@ -4,16 +4,20 @@ const CuentaCorriente = require('../models/CuentaCorriente');
 const MovimientoCta = require('../models/MovimientoCta');
 const Tercero = require('../models/Tercero');
 const { auditar } = require('../middleware/audit');
+const { toDecimal128, toNumber, round } = require('../utils/decimal.utils');
+const { calcularEquivalentes, obtenerCotizacion } = require('../utils/cambio.utils');
+const comprobanteService = require('../services/comprobante.service');
 
 const getComprobantes = async (req, res) => {
   try {
-    const { id_cuenta, tipo, estado, moneda, desde, hasta } = req.query;
+    const { id_cuenta, tipo, estado, moneda, origen, desde, hasta } = req.query;
     const query = {};
 
     if (id_cuenta) query.id_cuenta = id_cuenta;
     if (tipo) query.tipo = tipo;
     if (estado) query.estado = estado;
     if (moneda) query.moneda = moneda;
+    if (origen) query.origen = origen;
     if (desde || hasta) {
       query.fecha = {};
       if (desde) query.fecha.$gte = new Date(desde);
@@ -24,6 +28,7 @@ const getComprobantes = async (req, res) => {
       .populate('id_cuenta', 'id_tercero tipo moneda')
       .populate('id_tipo_cambio', 'fecha tipo valor_ars_por_usd')
       .populate('id_senia_origen', 'nro_comprobante monto_original')
+      .populate('id_remito_origen', 'nro_comprobante tipo fecha')
       .sort({ fecha: -1 });
 
     res.json({ success: true, data: comprobantes });
@@ -37,7 +42,9 @@ const getComprobanteById = async (req, res) => {
     const comprobante = await Comprobante.findById(req.params.id)
       .populate('id_cuenta', 'id_tercero tipo moneda')
       .populate('id_tipo_cambio', 'fecha tipo valor_ars_por_usd')
-      .populate('id_senia_origen', 'nro_comprobante monto_original tipo');
+      .populate('id_senia_origen', 'nro_comprobante monto_original tipo')
+      .populate('id_remito_origen', 'nro_comprobante tipo fecha')
+      .populate('items.id_producto', 'nombre sku tipo activo');
 
     if (!comprobante) {
       return res.status(404).json({ success: false, message: 'Comprobante no encontrado' });
@@ -55,26 +62,23 @@ const createComprobante = async (req, res) => {
       id_cuenta,
       tipo,
       moneda,
-      monto_original,
+      origen,
+      fecha,
       fecha_vencimiento,
-      id_tipo_cambio,
       cotizacion_usado,
-      equivalente_ars,
-      equivalente_usd,
-      es_senia,
+      id_tipo_cambio,
+      items,
       nro_comprobante,
-      observaciones
+      observaciones,
+      es_senia,
+      id_remito_origen
     } = req.body;
 
-    if (!id_cuenta || !tipo || !moneda || !monto_original) {
+    if (!id_cuenta || !tipo || !moneda) {
       return res.status(400).json({
         success: false,
-        message: 'id_cuenta, tipo, moneda y monto_original son requeridos'
+        message: 'id_cuenta, tipo y moneda son requeridos'
       });
-    }
-
-    if (monto_original <= 0) {
-      return res.status(400).json({ success: false, message: 'monto_original debe ser positivo' });
     }
 
     const cuenta = await CuentaCorriente.findById(id_cuenta);
@@ -85,32 +89,71 @@ const createComprobante = async (req, res) => {
     if (cuenta.moneda !== moneda) {
       return res.status(400).json({
         success: false,
-        message: `La moneda del comprobante (${moneda}) no coincide con la moneda de la cuenta (${cuenta.moneda})`
+        message: `La moneda del comprobante (${moneda}) no coincide con la cuenta (${cuenta.moneda})`
       });
     }
 
+    if (items && items.length > 0) {
+      const result = await comprobanteService.registrarComprobante({
+        id_cuenta, tipo, origen, moneda, fecha, fecha_vencimiento,
+        cotizacion_usado, id_tipo_cambio, items, nro_comprobante,
+        observaciones, es_senia, id_remito_origen
+      });
+
+      if (req.user?.id) {
+        await auditar(req, {
+          entidad: 'Comprobante',
+          entidadId: result.comprobante._id,
+          accion: 'create',
+          datosNuevos: result.comprobante.toObject()
+        });
+      }
+
+      return res.status(201).json({
+        success: true,
+        data: result.comprobante,
+        movimientos: result.movimientos,
+        movimientosStock: result.movimientosStock,
+        diferenciasMatching: result.diferenciasMatching,
+        saldo: result.saldo
+      });
+    }
+
+    const { monto_original, equivalente_ars, equivalente_usd } = req.body;
+
+    if (!monto_original || toNumber(monto_original) <= 0) {
+      return res.status(400).json({ success: false, message: 'monto_original debe ser positivo' });
+    }
+
+    if (moneda === 'USD' && !cotizacion_usado) {
+      return res.status(400).json({ success: false, message: 'cotizacion_usado es obligatorio para USD' });
+    }
+
+    let tc = null;
+    let cotizacionDecimal = null;
+    if (cotizacion_usado) {
+      cotizacionDecimal = toDecimal128(cotizacion_usado);
+      if (id_tipo_cambio) {
+        tc = await mongoose.model('TipoCambio').findById(id_tipo_cambio);
+      }
+    }
+
+    const montoDecimal = toDecimal128(monto_original);
+    const equivalentes = calcularEquivalentes(montoDecimal, moneda, cotizacionDecimal);
+
     const nro = nro_comprobante || `${tipo}-${Date.now()}`;
-
-    let equivalenteArs = equivalente_ars;
-    let equivalenteUsd = equivalente_usd;
-
-    if (moneda === 'USD' && !equivalenteArs && cotizacion_usado) {
-      equivalenteArs = Math.round(monto_original * cotizacion_usado * 100) / 100;
-    }
-    if (moneda === 'ARS' && !equivalenteUsd && cotizacion_usado) {
-      equivalenteUsd = Math.round((monto_original / cotizacion_usado) * 100) / 100;
-    }
 
     const comprobante = new Comprobante({
       id_cuenta,
       tipo,
+      origen: origen || 'venta',
       moneda,
-      monto_original,
+      monto_original: montoDecimal,
       fecha_vencimiento,
-      id_tipo_cambio,
-      cotizacion_usado,
-      equivalente_ars: equivalenteArs,
-      equivalente_usd: equivalenteUsd,
+      id_tipo_cambio: tc ? tc._id : undefined,
+      cotizacion_usado: cotizacionDecimal,
+      equivalente_ars: equivalentes.equivalente_ars,
+      equivalente_usd: equivalentes.equivalente_usd,
       es_senia: !!es_senia,
       nro_comprobante: nro,
       observaciones
@@ -143,38 +186,20 @@ const createComprobante = async (req, res) => {
 
 const aplicarPago = async (req, res) => {
   try {
-    const comprobante = await Comprobante.findById(req.params.id)
-      .populate('id_cuenta');
-    if (!comprobante) {
-      return res.status(404).json({ success: false, message: 'Comprobante no encontrado' });
-    }
-
-    if (comprobante.estado === 'cancelado') {
-      return res.status(400).json({ success: false, message: 'Comprobante ya cancelado' });
-    }
-
+    const { id } = req.params;
     const { monto } = req.body;
-    if (!monto || monto <= 0) {
+
+    if (!monto || toNumber(monto) <= 0) {
       return res.status(400).json({ success: false, message: 'monto debe ser positivo' });
     }
 
-    if (monto > comprobante.saldo_pendiente) {
-      return res.status(400).json({
-        success: false,
-        message: 'El pago excede el saldo pendiente',
-        saldo_pendiente: comprobante.saldo_pendiente
-      });
-    }
+    const result = await comprobanteService.aplicarPago(id, monto);
 
-    comprobante.aplicarPago(monto);
-    await comprobante.save();
-
-    await crearMovimientoCuenta(comprobante.id_cuenta, comprobante, 'HABER', monto, 'Pago');
-
-    const saldo = await MovimientoCta.calcularSaldo(comprobante.id_cuenta._id);
-
-    res.json({ success: true, data: comprobante, saldo });
+    res.json({ success: true, data: result.comprobante, saldo: result.saldo });
   } catch (error) {
+    if (error.message.includes('excede') || error.message.includes('cancelado')) {
+      return res.status(400).json({ success: false, message: error.message });
+    }
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -236,7 +261,7 @@ const anularComprobante = async (req, res) => {
 const getComprobantesByCuenta = async (req, res) => {
   try {
     const { cuentaId } = req.params;
-    const { tipo, estado, desde, hasta } = req.query;
+    const { tipo, estado, origen, desde, hasta } = req.query;
 
     if (!mongoose.Types.ObjectId.isValid(cuentaId)) {
       return res.status(400).json({ success: false, message: 'ID de cuenta invalido' });
@@ -245,6 +270,7 @@ const getComprobantesByCuenta = async (req, res) => {
     const query = { id_cuenta: cuentaId };
     if (tipo) query.tipo = tipo;
     if (estado) query.estado = estado;
+    if (origen) query.origen = origen;
     if (desde || hasta) {
       query.fecha = {};
       if (desde) query.fecha.$gte = new Date(desde);
@@ -327,9 +353,9 @@ const getResumen = async (req, res) => {
     comprobantes.forEach(c => {
       const m = c.moneda;
       resumen[m].cantidad += 1;
-      resumen[m].pendiente += c.saldo_pendiente || 0;
-      resumen[m].pagado += (c.monto_original || 0) - (c.saldo_pendiente || 0);
-      resumen[m].total += c.monto_original || 0;
+      resumen[m].pendiente += toNumber(c.saldo_pendiente || 0);
+      resumen[m].pagado += toNumber(c.monto_original || 0) - toNumber(c.saldo_pendiente || 0);
+      resumen[m].total += toNumber(c.monto_original || 0);
     });
 
     ['ARS', 'USD'].forEach(m => {
@@ -339,6 +365,64 @@ const getResumen = async (req, res) => {
     });
 
     res.json({ success: true, data: resumen });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const listarPendientes = async (req, res) => {
+  try {
+    const { id_tercero, origen, moneda } = req.query;
+    const comprobantes = await comprobanteService.listarPendientes(id_tercero, origen, moneda);
+    res.json({ success: true, data: comprobantes });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const getSaldoCuenta = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { moneda } = req.query;
+    const saldo = await comprobanteService.getSaldoCuenta(id, moneda);
+    res.json({ success: true, data: saldo });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const calcularDiferenciaCambio = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { cotizacion } = req.body;
+
+    if (!cotizacion) {
+      return res.status(400).json({ success: false, message: 'cotizacion es requerida' });
+    }
+
+    const diff = await comprobanteService.calcularDiferenciaCambio(id, cotizacion);
+    res.json({ success: true, data: diff });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const matchingRemitoFactura = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { items } = req.body;
+
+    if (!id || !items) {
+      return res.status(400).json({ success: false, message: 'id_remito_origen e items son requeridos' });
+    }
+
+    const remito = await Comprobante.findById(id);
+    if (!remito) {
+      return res.status(404).json({ success: false, message: 'Remito no encontrado' });
+    }
+
+    const diferencias = comprobanteService.matchingRemitoFactura(remito, items);
+    res.json({ success: true, data: diferencias });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -403,5 +487,9 @@ module.exports = {
   getComprobantesByCuenta,
   getComprobantesVencidos,
   getProximoNumero,
-  getResumen
+  getResumen,
+  listarPendientes,
+  getSaldoCuenta,
+  calcularDiferenciaCambio,
+  matchingRemitoFactura
 };

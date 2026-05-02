@@ -251,6 +251,9 @@ const tercerosRoutes = require('./routes/terceros');
 const tiposCambioRoutes = require('./routes/tiposCambio');
 const movimientoCtaRoutes = require('./routes/movimientosCta');
 const prestamosRoutes = require('./routes/prestamos');
+const categoriaRoutes = require('./routes/categorias');
+const listaPrecioRoutes = require('./routes/listasPrecio');
+const preciosProductoRoutes = require('./routes/preciosProducto');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/productos', productoRoutes);
@@ -271,6 +274,9 @@ app.use('/api/terceros', tercerosRoutes);
 app.use('/api/tipos-cambio', tiposCambioRoutes);
 app.use('/api/prestamos', prestamosRoutes);
 app.use('/api/movimientos-cta', movimientoCtaRoutes);
+app.use('/api/categorias', categoriaRoutes);
+app.use('/api/listas-precio', listaPrecioRoutes);
+app.use('/api/precios-producto', preciosProductoRoutes);
 
 app.get('/', (req, res) => {
   res.json({

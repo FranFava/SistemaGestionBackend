@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { toNumber } = require('../utils/decimal.utils');
 
 const movimientoCtaSchema = new mongoose.Schema({
   id_cuenta: {
@@ -21,7 +22,7 @@ const movimientoCtaSchema = new mongoose.Schema({
     required: true
   },
   monto: {
-    type: Number,
+    type: mongoose.Schema.Types.Decimal128,
     required: true
   },
   moneda: {
@@ -43,17 +44,24 @@ movimientoCtaSchema.index({ id_comprobante: 1 });
 movimientoCtaSchema.index({ tipo: 1, moneda: 1 });
 movimientoCtaSchema.index({ fecha: -1 });
 
-movimientoCtaSchema.statics.calcularSaldo = async function (id_cuenta) {
+movimientoCtaSchema.statics.calcularSaldo = async function (id_cuenta, moneda) {
+  const query = { id_cuenta: new mongoose.Types.ObjectId(id_cuenta) };
+  if (moneda) query.moneda = moneda;
+
   const result = await this.aggregate([
-    { $match: { id_cuenta: new mongoose.Types.ObjectId(id_cuenta) } },
+    { $match: query },
     {
       $group: {
         _id: null,
         totalDebe: {
-          $sum: { $cond: [{ $eq: ['$tipo', 'DEBE'] }, '$monto', 0] }
+          $sum: {
+            $cond: [{ $eq: ['$tipo', 'DEBE'] }, { $toDouble: '$monto' }, 0]
+          }
         },
         totalHaber: {
-          $sum: { $cond: [{ $eq: ['$tipo', 'HABER'] }, '$monto', 0] }
+          $sum: {
+            $cond: [{ $eq: ['$tipo', 'HABER'] }, { $toDouble: '$monto' }, 0]
+          }
         }
       }
     }
@@ -77,7 +85,7 @@ movimientoCtaSchema.statics.calcularSaldoPorMoneda = async function (id_cuenta) 
     {
       $group: {
         _id: { moneda: '$moneda', tipo: '$tipo' },
-        total: { $sum: '$monto' }
+        total: { $sum: { $toDouble: '$monto' } }
       }
     }
   ]);
@@ -115,9 +123,9 @@ movimientoCtaSchema.statics.getEstadoCuenta = async function (id_cuenta, desde, 
   let saldoParcial = 0;
   return movimientos.map(m => {
     if (m.tipo === 'DEBE') {
-      saldoParcial += m.monto;
+      saldoParcial += toNumber(m.monto);
     } else {
-      saldoParcial -= m.monto;
+      saldoParcial -= toNumber(m.monto);
     }
     return {
       ...m.toObject(),

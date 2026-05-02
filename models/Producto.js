@@ -12,6 +12,20 @@ const productoSchema = new mongoose.Schema({
   },
   marca: String,
   categoria: String,
+  id_categoria: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Categoria',
+    default: null
+  },
+  tipo: {
+    type: String,
+    enum: ['bien', 'servicio'],
+    default: 'bien'
+  },
+  unidad: {
+    type: String,
+    default: 'un'
+  },
   descripcion: String,
   precioCosto: Number,
   precioVenta: Number,
@@ -74,5 +88,14 @@ const productoSchema = new mongoose.Schema({
 
 productoSchema.index({ empresa: 1, activo: 1 });
 productoSchema.index({ categoria: 1, activo: 1 });
+productoSchema.index({ id_categoria: 1, activo: 1 });
+productoSchema.index({ tipo: 1, activo: 1 });
+
+productoSchema.virtual('codigo').get(function () {
+  return this.sku;
+});
+
+productoSchema.set('toJSON', { virtuals: true });
+productoSchema.set('toObject', { virtuals: true });
 
 module.exports = mongoose.model('Producto', productoSchema);
