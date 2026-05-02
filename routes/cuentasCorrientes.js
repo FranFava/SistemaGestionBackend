@@ -10,9 +10,6 @@ const {
   cerrarCuenta,
   getCuentasPorTercero,
   buscarCuenta,
-  agregarMovimiento,
-  getEstadoCuenta,
-  getSaldo,
   getCuentasVencidas,
   getSaldosResumen
 } = require('../controllers/cuentaCorrienteController');
@@ -25,10 +22,7 @@ router.get('/vencidas', getCuentasVencidas);
 router.get('/buscar', buscarCuenta);
 router.get('/tercero/:terceroId', getCuentasPorTercero);
 router.get('/:id', validateObjectId, getCuentaById);
-router.get('/:id/estado-cuenta', validateObjectId, getEstadoCuenta);
-router.get('/:id/saldo', validateObjectId, getSaldo);
 router.post('/', adminOnly, createCuenta);
-router.post('/:id/movimientos', validateObjectId, agregarMovimiento);
 router.put('/:id', validateObjectId, updateCuenta);
 router.delete('/:id', adminOnly, validateObjectId, cerrarCuenta);
 

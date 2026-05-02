@@ -1,6 +1,8 @@
 const mongoose = require('mongoose');
 const Comprobante = require('../models/Comprobante');
 const CuentaCorriente = require('../models/CuentaCorriente');
+const MovimientoCta = require('../models/MovimientoCta');
+const Tercero = require('../models/Tercero');
 const { auditar } = require('../middleware/audit');
 
 const getComprobantes = async (req, res) => {
@@ -87,7 +89,7 @@ const createComprobante = async (req, res) => {
       });
     }
 
-    const nro = nro_comprobante || `${String(tipo).padEnd(6)}-${Date.now()}`;
+    const nro = nro_comprobante || `${tipo}-${Date.now()}`;
 
     let equivalenteArs = equivalente_ars;
     let equivalenteUsd = equivalente_usd;
@@ -116,7 +118,7 @@ const createComprobante = async (req, res) => {
 
     await comprobante.save();
 
-    const cuentaActualizada = await agregarMovimientoACuenta(cuenta, comprobante);
+    await crearMovimientoCuenta(cuenta, comprobante);
 
     if (req.user?.id) {
       await auditar(req, {
@@ -127,10 +129,12 @@ const createComprobante = async (req, res) => {
       });
     }
 
+    const saldo = await MovimientoCta.calcularSaldo(id_cuenta);
+
     res.status(201).json({
       success: true,
       data: comprobante,
-      saldo_cuenta: cuentaActualizada.saldo_calculado
+      saldo
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -139,7 +143,8 @@ const createComprobante = async (req, res) => {
 
 const aplicarPago = async (req, res) => {
   try {
-    const comprobante = await Comprobante.findById(req.params.id);
+    const comprobante = await Comprobante.findById(req.params.id)
+      .populate('id_cuenta');
     if (!comprobante) {
       return res.status(404).json({ success: false, message: 'Comprobante no encontrado' });
     }
@@ -164,18 +169,11 @@ const aplicarPago = async (req, res) => {
     comprobante.aplicarPago(monto);
     await comprobante.save();
 
-    const cuenta = await CuentaCorriente.findById(comprobante.id_cuenta);
-    if (cuenta) {
-      cuenta.agregarMovimiento({
-        tipo: 'abono',
-        concepto: `Pago ${comprobante.nro_comprobante}`,
-        importe: monto,
-        origen: { tipo: 'comprobante', id: comprobante._id }
-      });
-      await cuenta.save();
-    }
+    await crearMovimientoCuenta(comprobante.id_cuenta, comprobante, 'HABER', monto, 'Pago');
 
-    res.json({ success: true, data: comprobante, saldo_cuenta: cuenta?.saldo_calculado });
+    const saldo = await MovimientoCta.calcularSaldo(comprobante.id_cuenta._id);
+
+    res.json({ success: true, data: comprobante, saldo });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -346,47 +344,53 @@ const getResumen = async (req, res) => {
   }
 };
 
-async function agregarMovimientoACuenta(cuenta, comprobante) {
+async function crearMovimientoCuenta(cuenta, comprobante, tipoOverride, montoOverride, conceptoOverride) {
   let tipoMovimiento;
   let concepto;
+  let monto;
 
-  switch (comprobante.tipo) {
-    case 'FACT':
-    case 'ND':
-      tipoMovimiento = 'cargo';
-      concepto = `Factura ${comprobante.nro_comprobante}`;
-      break;
-    case 'REC':
-      tipoMovimiento = 'abono';
-      concepto = `Recibo ${comprobante.nro_comprobante}`;
-      break;
-    case 'NC':
-      tipoMovimiento = 'abono';
-      concepto = `Nota de credito ${comprobante.nro_comprobante}`;
-      break;
-    case 'SENIA':
-      tipoMovimiento = 'senia';
-      concepto = `Senia ${comprobante.nro_comprobante}`;
-      break;
-    case 'REM':
-      tipoMovimiento = 'cargo';
-      concepto = `Remito ${comprobante.nro_comprobante}`;
-      break;
-    default:
-      tipoMovimiento = 'cargo';
-      concepto = `Comprobante ${comprobante.nro_comprobante}`;
+  if (tipoOverride) {
+    tipoMovimiento = tipoOverride;
+    concepto = conceptoOverride || `${comprobante.tipo} ${comprobante.nro_comprobante}`;
+    monto = montoOverride;
+  } else {
+    monto = comprobante.monto_original;
+    concepto = `${comprobante.tipo} ${comprobante.nro_comprobante}`;
+
+    switch (comprobante.tipo) {
+      case 'FACT':
+      case 'ND':
+        tipoMovimiento = 'DEBE';
+        break;
+      case 'REC':
+        tipoMovimiento = 'HABER';
+        break;
+      case 'NC':
+        tipoMovimiento = 'HABER';
+        break;
+      case 'SENIA':
+        tipoMovimiento = 'HABER';
+        break;
+      case 'REM':
+        tipoMovimiento = 'DEBE';
+        break;
+      default:
+        tipoMovimiento = 'DEBE';
+    }
   }
 
-  cuenta.agregarMovimiento({
+  const movimiento = new MovimientoCta({
+    id_cuenta: cuenta._id,
+    id_comprobante: comprobante._id,
     tipo: tipoMovimiento,
+    monto,
+    moneda: cuenta.moneda,
     concepto,
-    importe: comprobante.monto_original,
-    origen: { tipo: 'comprobante', id: comprobante._id },
-    comprobante: comprobante.nro_comprobante
+    observaciones: comprobante.observaciones
   });
 
-  await cuenta.save();
-  return cuenta;
+  await movimiento.save();
+  return movimiento;
 }
 
 module.exports = {
