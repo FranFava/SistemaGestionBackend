@@ -1,25 +1,31 @@
 const express = require('express');
 const router = express.Router();
-const { auth } = require('../middleware/auth');
+const { auth, adminOnly } = require('../middleware/auth');
 const { validateObjectId } = require('../utils/validators');
 const {
   getComprobantes,
   getComprobanteById,
   createComprobante,
-  updateComprobante,
-  emitrComprobante,
-  anulrComprobante,
+  aplicarPago,
+  aplicarSenia,
+  anularComprobante,
+  getComprobantesByCuenta,
+  getComprobantesVencidos,
   getProximoNumero,
-  getEstadisticas
+  getResumen
 } = require('../controllers/comprobanteController');
 
-router.get('/', auth, getComprobantes);
-router.get('/proximo', auth, getProximoNumero);
-router.get('/estadisticas', auth, getEstadisticas);
-router.get('/:id', auth, validateObjectId, getComprobanteById);
-router.post('/', auth, createComprobante);
-router.put('/:id', auth, validateObjectId, updateComprobante);
-router.post('/:id/emitir', auth, validateObjectId, emitrComprobante);
-router.post('/:id/anular', auth, validateObjectId, anulrComprobante);
+router.use(auth);
+
+router.get('/', getComprobantes);
+router.get('/vencidos', getComprobantesVencidos);
+router.get('/proximo', getProximoNumero);
+router.get('/resumen', getResumen);
+router.get('/cuenta/:cuentaId', getComprobantesByCuenta);
+router.get('/:id', validateObjectId, getComprobanteById);
+router.post('/', createComprobante);
+router.post('/:id/pago', validateObjectId, aplicarPago);
+router.post('/:id/senia', validateObjectId, aplicarSenia);
+router.post('/:id/anular', validateObjectId, anularComprobante);
 
 module.exports = router;
